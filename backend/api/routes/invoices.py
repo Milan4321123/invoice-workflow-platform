@@ -7,6 +7,7 @@ import logging
 import os
 
 from services.database import db_service
+from services.dropdown_labels import with_labels
 from services.email_service import email_service
 from api.dependencies.auth import require_auth
 
@@ -26,7 +27,7 @@ async def get_invoices():
         
         if result["success"]:
             return {
-                "invoices": result["data"],
+                "invoices": [with_labels(invoice) for invoice in result["data"]],
                 "total": len(result["data"])
             }
         else:
@@ -84,7 +85,7 @@ async def get_invoices_by_status(status: str, limit: int = 100):
         if result["success"]:
             return {
                 "success": True,
-                "invoices": result["data"],
+                "invoices": [with_labels(invoice) for invoice in result["data"]],
                 "total": len(result["data"]),
                 "status": status
             }
@@ -229,7 +230,7 @@ async def get_invoice(invoice_id: str = Path(..., description="The invoice ID"))
         if result["success"]:
             return {
                 "status": "success",
-                "invoice": result["data"]
+                "invoice": with_labels(result["data"])
             }
         else:
             raise HTTPException(status_code=404, detail="Invoice not found")

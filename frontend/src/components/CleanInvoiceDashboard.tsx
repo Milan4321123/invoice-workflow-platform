@@ -41,6 +41,11 @@ interface CleanInvoice {
   // German Business Fields
   rechnungsempfaenger?: string
   rechnungssteller?: string
+  rechnungssteller_label?: string
+  rechnungsempfaenger_label?: string
+  projekt_label?: string
+  gewerk_label?: string
+  weiter_berechnen_an_label?: string
   projekt?: string
   gewerk?: string
   rechnungsbetrag?: number
@@ -441,11 +446,16 @@ export default function CleanInvoiceDashboard() {
       const searchableFields = [
         invoice.file_name,
         invoice.rechnungsempfaenger,
+        invoice.rechnungsempfaenger_label,
         invoice.rechnungssteller,
+        invoice.rechnungssteller_label,
         invoice.projekt,
+        invoice.projekt_label,
         invoice.gewerk,
+        invoice.gewerk_label,
         invoice.rechnungsart,
         invoice.weiter_berechnen_an,
+        invoice.weiter_berechnen_an_label,
         invoice.rechnungspruefung,
         invoice.status,
         invoice.review_status,
@@ -754,26 +764,26 @@ export default function CleanInvoiceDashboard() {
                       </td>
                       
                       <td className="px-4 py-4 whitespace-nowrap min-w-[150px]">
-                        <div className="text-sm text-gray-900 truncate max-w-[130px]" title={invoice.rechnungsempfaenger || ''}>
-                          {invoice.rechnungsempfaenger || '---'}
+                        <div className="text-sm text-gray-900 truncate max-w-[130px]" title={invoice.rechnungsempfaenger_label || invoice.rechnungsempfaenger || ''}>
+                          {invoice.rechnungsempfaenger_label || invoice.rechnungsempfaenger || '---'}
                         </div>
                       </td>
                       
                       <td className="px-4 py-4 whitespace-nowrap min-w-[150px]">
-                        <div className="text-sm text-gray-900 truncate max-w-[130px]" title={invoice.rechnungssteller || ''}>
-                          {invoice.rechnungssteller || '---'}
+                        <div className="text-sm text-gray-900 truncate max-w-[130px]" title={invoice.rechnungssteller_label || invoice.rechnungssteller || ''}>
+                          {invoice.rechnungssteller_label || invoice.rechnungssteller || '---'}
                         </div>
                       </td>
                       
                       <td className="px-4 py-4 whitespace-nowrap min-w-[120px]">
-                        <div className="text-sm text-gray-900 truncate max-w-[100px]" title={invoice.projekt || ''}>
-                          {invoice.projekt || '---'}
+                        <div className="text-sm text-gray-900 truncate max-w-[100px]" title={invoice.projekt_label || invoice.projekt || ''}>
+                          {invoice.projekt_label || invoice.projekt || '---'}
                         </div>
                       </td>
                       
                       <td className="px-4 py-4 whitespace-nowrap min-w-[100px]">
-                        <div className="text-sm text-gray-900 truncate max-w-[80px]" title={invoice.gewerk || ''}>
-                          {invoice.gewerk || '---'}
+                        <div className="text-sm text-gray-900 truncate max-w-[80px]" title={invoice.gewerk_label || invoice.gewerk || ''}>
+                          {invoice.gewerk_label || invoice.gewerk || '---'}
                         </div>
                       </td>
                       
@@ -830,8 +840,8 @@ export default function CleanInvoiceDashboard() {
                       </td>
                       
                       <td className="px-4 py-4 whitespace-nowrap min-w-[150px]">
-                        <div className="text-sm text-gray-900 truncate max-w-[130px]" title={invoice.weiter_berechnen_an || ''}>
-                          {invoice.weiter_berechnen_an || '---'}
+                        <div className="text-sm text-gray-900 truncate max-w-[130px]" title={invoice.weiter_berechnen_an_label || invoice.weiter_berechnen_an || ''}>
+                          {invoice.weiter_berechnen_an_label || invoice.weiter_berechnen_an || '---'}
                         </div>
                       </td>
                       

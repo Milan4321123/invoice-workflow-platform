@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, EmailStr, EmailStr
 
 from services.database import db_service
+from services.dropdown_labels import display_label
 from services.skonto_scheduler import skonto_scheduler, run_manual_skonto_check
 
 logger = logging.getLogger(__name__)
@@ -170,9 +171,9 @@ async def get_skonto_summary():
 
         response = SkontoSummaryResponse(
             total_opportunities=total_opportunities,
-            total_potential_savings=total_potential_savings,
+            total_potential_savings=round(total_potential_savings, 2),
             urgent_count=urgent_count,
-            urgent_potential=urgent_potential,
+            urgent_potential=round(urgent_potential, 2),
             monthly_average_savings=monthly_average_savings,
             success_rate=success_rate,
             reminders_sent_count=reminders_sent_count,
@@ -408,7 +409,7 @@ async def get_skonto_opportunities(
                 opportunities.append(SkontoOpportunityResponse(
                     id=str(invoice["id"]),
                     invoice_number=invoice.get("file_name") or "N/A",  # Use file_name from your schema
-                    supplier=invoice.get("rechnungssteller") or "N/A",  # Use rechnungssteller from your schema
+                    supplier=display_label("rechnungssteller", invoice.get("rechnungssteller")) or "N/A",
                     amount=float(amount),
                     skonto_percentage=float(skonto_prozent),
                     skonto_date=skonto_datum,

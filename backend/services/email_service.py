@@ -18,6 +18,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 
 from .database import db_service
+from .dropdown_labels import display_label
 
 logger = logging.getLogger(__name__)
 
@@ -891,22 +892,22 @@ class EmailService:
                 # Basic invoice information with filename fallback
                 "invoice_number": clean_field_value(invoice_data.get("rechnungsnummer")),
                 "invoice_display_name": get_display_name(invoice_data),
-                "supplier_name": clean_field_value(invoice_data.get("lieferant")),
+                "supplier_name": clean_field_value(display_label("rechnungssteller", invoice_data.get("rechnungssteller"))),
                 "invoice_date": clean_field_value(invoice_data.get("rechnungsdatum")),
                 "total_amount": invoice_data.get("rechnungsbetrag"),
                 "currency": invoice_data.get("currency", "EUR"),
                 "status": "Bearbeitung abgeschlossen",
                 
                 # Comprehensive invoice fields
-                "rechnungsempfaenger": clean_field_value(invoice_data.get("rechnungsempfaenger")),
-                "rechnungssteller": clean_field_value(invoice_data.get("rechnungssteller")),
+                "rechnungsempfaenger": clean_field_value(display_label("rechnungsempfaenger", invoice_data.get("rechnungsempfaenger"))),
+                "rechnungssteller": clean_field_value(display_label("rechnungssteller", invoice_data.get("rechnungssteller"))),
                 "rechnungseingang": clean_field_value(invoice_data.get("rechnungseingang")),
                 
                 # Project and trade information
-                "projekt": clean_field_value(invoice_data.get("projekt")),
-                "gewerk": clean_field_value(invoice_data.get("gewerk")),
+                "projekt": clean_field_value(display_label("projekt", invoice_data.get("projekt"))),
+                "gewerk": clean_field_value(display_label("gewerk", invoice_data.get("gewerk"))),
                 "kostenstelle": clean_field_value(invoice_data.get("kostenstelle")),
-                "weiter_berechnen_an": clean_field_value(invoice_data.get("weiter_berechnen_an")),
+                "weiter_berechnen_an": clean_field_value(display_label("weiter_berechnen_an", invoice_data.get("weiter_berechnen_an"))),
                 
                 # Financial details
                 "rechnungsbetrag": invoice_data.get("rechnungsbetrag"),
@@ -1059,23 +1060,23 @@ class EmailService:
                 # Basic invoice information with filename fallback
                 "invoice_number": clean_field_value(invoice_data.get("rechnungsnummer")),
                 "invoice_display_name": get_display_name(invoice_data),
-                "supplier_name": clean_field_value(invoice_data.get("lieferant")),
+                "supplier_name": clean_field_value(display_label("rechnungssteller", invoice_data.get("rechnungssteller"))),
                 "invoice_date": clean_field_value(invoice_data.get("rechnungsdatum")),
                 "total_amount": invoice_data.get("rechnungsbetrag"),
                 "currency": invoice_data.get("currency", "EUR"),
                 
                 # German business fields - comprehensive invoice data
-                "rechnungsempfaenger": clean_field_value(invoice_data.get("rechnungsempfaenger")),
-                "rechnungssteller": clean_field_value(invoice_data.get("rechnungssteller")),
-                "projekt": clean_field_value(invoice_data.get("projekt")),
-                "gewerk": clean_field_value(invoice_data.get("gewerk")),
+                "rechnungsempfaenger": clean_field_value(display_label("rechnungsempfaenger", invoice_data.get("rechnungsempfaenger"))),
+                "rechnungssteller": clean_field_value(display_label("rechnungssteller", invoice_data.get("rechnungssteller"))),
+                "projekt": clean_field_value(display_label("projekt", invoice_data.get("projekt"))),
+                "gewerk": clean_field_value(display_label("gewerk", invoice_data.get("gewerk"))),
                 "kostenstelle": clean_field_value(invoice_data.get("kostenstelle")),
                 "rechnungseingang": invoice_data.get("rechnungseingang"),
                 "faelligkeit": invoice_data.get("faelligkeit"),
                 "skonto_datum": invoice_data.get("skonto_datum"),
                 "skonto_prozent": invoice_data.get("skonto_prozent"),
                 "kfw_anrechenbare_kosten": invoice_data.get("kfw_anrechenbare_kosten"),
-                "weiter_berechnen_an": invoice_data.get("weiter_berechnen_an"),
+                "weiter_berechnen_an": display_label("weiter_berechnen_an", invoice_data.get("weiter_berechnen_an")),
                 
                 # Additional financial information
                 "material_kosten": invoice_data.get("material_kosten"),
@@ -1304,7 +1305,7 @@ class EmailService:
                 "request_id": request_id or "N/A",
                 "invoice_number": clean_field_value(invoice_data.get("rechnungsnummer")),
                 "invoice_display_name": get_display_name(invoice_data),
-                "supplier_name": clean_field_value(invoice_data.get("lieferant")),
+                "supplier_name": clean_field_value(display_label("rechnungssteller", invoice_data.get("rechnungssteller"))),
                 "invoice_date": clean_field_value(invoice_data.get("rechnungsdatum")),
                 "total_amount": total_amount,
                 "currency": invoice_data.get("currency", "EUR"),

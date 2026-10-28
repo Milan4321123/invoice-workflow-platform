@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 # Import centralized database service
 from services.database import db_service
+from services.dropdown_labels import invalidate as invalidate_labels
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -93,11 +94,15 @@ def _get_dropdown_options_from_db(field_name: Optional[str] = None) -> Dict[str,
 
 def _add_dropdown_option_to_db(field_name: str, value: str, label: str, is_default: bool = False, metadata: Dict = None) -> Dict[str, Any]:
     """Add a new dropdown option to database"""
-    return db_service.add_dropdown_option(field_name, value, label, is_default, metadata)
+    result = db_service.add_dropdown_option(field_name, value, label, is_default, metadata)
+    invalidate_labels()
+    return result
 
 def _delete_dropdown_option_from_db(field_name: str, value: str) -> Dict[str, Any]:
     """Delete a dropdown option from database (soft delete - set is_active=false)"""
-    return db_service.delete_dropdown_option(field_name, value)
+    result = db_service.delete_dropdown_option(field_name, value)
+    invalidate_labels()
+    return result
 
 def _get_valid_field_names() -> List[str]:
     """Get list of valid field names (from fallback or database)"""
@@ -292,6 +297,7 @@ async def update_dropdown_option(request: UpdateOptionRequest):
     
     # Update in database
     db_result = db_service.update_dropdown_option(request.field_name, request.old_value, safe_new_value, new_label)
+    invalidate_labels()
     
     if not db_result.get("success"):
         raise HTTPException(status_code=500, detail=f"Failed to update option in database: {db_result.get('error', 'Unknown error')}")

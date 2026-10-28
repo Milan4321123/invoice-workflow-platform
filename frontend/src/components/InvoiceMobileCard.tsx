@@ -33,6 +33,10 @@ interface CleanInvoice {
   // German Business Fields
   rechnungsempfaenger?: string
   rechnungssteller?: string
+  rechnungssteller_label?: string
+  rechnungsempfaenger_label?: string
+  projekt_label?: string
+  gewerk_label?: string
   projekt?: string
   gewerk?: string
   rechnungsbetrag?: number
@@ -132,8 +136,8 @@ export default function InvoiceMobileCard({
           {invoice.rechnungssteller && (
             <div className="flex items-start justify-between">
               <span className="text-gray-600 text-xs">Rechnungssteller:</span>
-              <span className="text-gray-900 font-medium text-right truncate ml-2 max-w-[60%]" title={invoice.rechnungssteller}>
-                {invoice.rechnungssteller}
+              <span className="text-gray-900 font-medium text-right truncate ml-2 max-w-[60%]" title={invoice.rechnungssteller_label || invoice.rechnungssteller}>
+                {invoice.rechnungssteller_label || invoice.rechnungssteller}
               </span>
             </div>
           )}
@@ -141,8 +145,8 @@ export default function InvoiceMobileCard({
           {invoice.rechnungsempfaenger && (
             <div className="flex items-start justify-between">
               <span className="text-gray-600 text-xs">Empfänger:</span>
-              <span className="text-gray-900 font-medium text-right truncate ml-2 max-w-[60%]" title={invoice.rechnungsempfaenger}>
-                {invoice.rechnungsempfaenger}
+              <span className="text-gray-900 font-medium text-right truncate ml-2 max-w-[60%]" title={invoice.rechnungsempfaenger_label || invoice.rechnungsempfaenger}>
+                {invoice.rechnungsempfaenger_label || invoice.rechnungsempfaenger}
               </span>
             </div>
           )}
@@ -150,8 +154,8 @@ export default function InvoiceMobileCard({
           {invoice.projekt && (
             <div className="flex items-start justify-between">
               <span className="text-gray-600 text-xs">Projekt:</span>
-              <span className="text-gray-900 font-medium text-right truncate ml-2 max-w-[60%]" title={invoice.projekt}>
-                {invoice.projekt}
+              <span className="text-gray-900 font-medium text-right truncate ml-2 max-w-[60%]" title={invoice.projekt_label || invoice.projekt}>
+                {invoice.projekt_label || invoice.projekt}
               </span>
             </div>
           )}
@@ -159,8 +163,8 @@ export default function InvoiceMobileCard({
           {invoice.gewerk && (
             <div className="flex items-start justify-between">
               <span className="text-gray-600 text-xs">Gewerk:</span>
-              <span className="text-gray-900 font-medium text-right truncate ml-2 max-w-[60%]" title={invoice.gewerk}>
-                {invoice.gewerk}
+              <span className="text-gray-900 font-medium text-right truncate ml-2 max-w-[60%]" title={invoice.gewerk_label || invoice.gewerk}>
+                {invoice.gewerk_label || invoice.gewerk}
               </span>
             </div>
           )}
