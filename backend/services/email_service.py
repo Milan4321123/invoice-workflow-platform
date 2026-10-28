@@ -575,7 +575,7 @@ class EmailService:
         
         <div class="content">
             <div class="alert-box">
-                <strong>⏰ ZEITKRITISCH:</strong> Das Skonto für diese Rechnung läuft in {{ days_until_expiry }} Tag(en) ab. 
+                <strong>⏰ ZEITKRITISCH:</strong> Das Skonto für diese Rechnung läuft {% if days_until_expiry <= 0 %}heute{% elif days_until_expiry == 1 %}morgen{% else %}in {{ days_until_expiry }} Tagen{% endif %} ab. 
                 Eine Entscheidung wäre erforderlich, um potenzielle Einsparungen nicht zu verpassen.
             </div>
 
@@ -634,7 +634,7 @@ class EmailService:
 
             {% if days_until_expiry <= 3 %}
             <div class="deadline-warning">
-                <strong>🚨 DRINGEND: Nur noch {{ days_until_expiry }} Tag(en) bis zum Skonto-Ablauf!</strong>
+                <strong>🚨 DRINGEND: {% if days_until_expiry <= 0 %}Das Skonto läuft heute ab!{% elif days_until_expiry == 1 %}Nur noch 1 Tag bis zum Skonto-Ablauf!{% else %}Nur noch {{ days_until_expiry }} Tage bis zum Skonto-Ablauf!{% endif %}</strong>
             </div>
             {% endif %}
 
@@ -942,12 +942,12 @@ class EmailService:
             if is_completion:
                 # Formal completion email
                 template = self.jinja_env.get_template("editor_notification")
-                subject = f"{context['invoice_display_name']}"
+                subject = f"Bearbeitung abgeschlossen: {context['invoice_display_name']}"
                 context["status"] = "Bearbeitung abgeschlossen"
             else:
                 # Summary so far email
                 template = self.jinja_env.get_template("editor_summary")
-                subject = f"{context['invoice_display_name']}"
+                subject = f"In Bearbeitung: {context['invoice_display_name']}"
                 context["status"] = "In Bearbeitung"
             
             html_content = template.render(**context)
@@ -1096,7 +1096,7 @@ class EmailService:
             html_content = template.render(**context)
             
             # Email details
-            subject = f"{context['invoice_display_name']}"
+            subject = f"Freigabe erforderlich: {context['invoice_display_name']}"
             
             # Send email
             result = await self._send_email(
@@ -1151,7 +1151,7 @@ class EmailService:
             html_content = template.render(**context)
             
             # Email details
-            subject = f"Dropdown Options Updated - {len(changes)} changes"
+            subject = f"Dropdown-Optionen geändert: {len(changes)} Änderung(en)"
             
             # Send email
             result = await self._send_email(
@@ -1219,7 +1219,9 @@ class EmailService:
                 else:
                     skonto_date = skonto_datum
                 
-                days_until_expiry = (skonto_date - datetime.now()).days
+                # Compare calendar days; midnight vs. "now" would round down by one
+                skonto_day = skonto_date.date() if isinstance(skonto_date, datetime) else skonto_date
+                days_until_expiry = (skonto_day - datetime.now().date()).days
             except (ValueError, TypeError) as e:
                 logger.error(f"Failed to parse Skonto date {skonto_datum}: {e}")
                 return {
@@ -1327,8 +1329,14 @@ class EmailService:
                 urgency = "⚠️ WICHTIG"
             else:
                 urgency = "📋"
-                
-            subject = f"{context['invoice_display_name']}"
+
+            if days_until_expiry <= 0:
+                deadline = "läuft heute ab"
+            elif days_until_expiry == 1:
+                deadline = "noch 1 Tag"
+            else:
+                deadline = f"noch {days_until_expiry} Tage"
+            subject = f"{urgency} Skonto-Erinnerung: {context['invoice_display_name']} ({deadline})"
             
             # Send email
             result = await self._send_email(
@@ -1400,7 +1408,7 @@ class EmailService:
                 # Keep a copy so the links in the mail can be clicked locally
                 outbox_dir = Path(os.getenv("EMAIL_OUTBOX_DIR", "outbox"))
                 outbox_dir.mkdir(parents=True, exist_ok=True)
-                outbox_file = outbox_dir / f"{start_time:%Y%m%d_%H%M%S}_{email_type}.html"
+                outbox_file = outbox_dir / f"{start_time:%Y%m%d_%H%M%S_%f}_{email_type}.html"
                 outbox_file.write_text(html_content, encoding="utf-8")
                 logger.info(f"   Saved to: {outbox_file.resolve()}")
                 return {
