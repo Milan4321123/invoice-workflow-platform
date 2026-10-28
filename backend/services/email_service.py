@@ -1411,12 +1411,25 @@ class EmailService:
                 outbox_file = outbox_dir / f"{start_time:%Y%m%d_%H%M%S_%f}_{email_type}.html"
                 outbox_file.write_text(html_content, encoding="utf-8")
                 logger.info(f"   Saved to: {outbox_file.resolve()}")
-                return {
+                result = {
                     "success": True,
                     "provider": "demo",
                     "message_id": f"demo-{secrets.token_hex(8)}",
-                    "response": {"demo_mode": True, "logged_only": True}
+                    "response": {"demo_mode": True, "outbox_file": outbox_file.name}
                 }
+                # Audit demo mails too, so reminder counts match what was "sent"
+                await self._log_email_send(
+                    invoice_id=invoice_id,
+                    email_type=email_type,
+                    recipient_email=to_email,
+                    subject=subject,
+                    send_success=True,
+                    provider_message_id=result["message_id"],
+                    provider_response=result["response"],
+                    template_used=template_used,
+                    email_size_bytes=email_size
+                )
+                return result
             
             # Check if SendGrid is configured
             if not self.sendgrid_api_key:

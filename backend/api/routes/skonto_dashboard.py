@@ -47,6 +47,8 @@ class SkontoOpportunityResponse(BaseModel):
     urgency_level: str
     reminder_sent: bool
     skonto_decision: str
+    reminder_count: int = 0
+    last_reminder_at: Optional[str] = None
 
 # Request Models
 class SkontoConfigUpdateRequest(BaseModel):
@@ -61,6 +63,29 @@ class SkontoReminderRequest(BaseModel):
     invoice_ids: List[str]
     recipient_email: EmailStr
     recipient_name: Optional[str] = None
+
+def _skonto_reminder_log(invoice_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Count sent Skonto reminders per invoice from the email audit log"""
+    if not invoice_ids:
+        return {}
+    try:
+        rows = (db_service.client.table("email_audit_log")
+                .select("invoice_id,sent_at")
+                .eq("email_type", "skonto_reminder")
+                .eq("send_success", True)
+                .in_("invoice_id", invoice_ids)
+                .execute()).data or []
+    except Exception as e:
+        logger.warning(f"Could not read reminder log: {e}")
+        return {}
+    log: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        entry = log.setdefault(row["invoice_id"], {"count": 0, "last": None})
+        entry["count"] += 1
+        if not entry["last"] or row["sent_at"] > entry["last"]:
+            entry["last"] = row["sent_at"]
+    return log
+
 
 @router.get("/skonto/dashboard/summary", response_model=SkontoSummaryResponse)
 async def get_skonto_summary():
@@ -308,6 +333,7 @@ async def get_skonto_opportunities(
         
         invoices = invoices_result.get("data", [])
         opportunities = []
+        reminder_log = _skonto_reminder_log([str(inv["id"]) for inv in invoices if inv.get("id")])
         
         from datetime import datetime
         today = datetime.now().date()
@@ -390,7 +416,9 @@ async def get_skonto_opportunities(
                     days_until_expiry=days_until_expiry,
                     urgency_level=urgency_level,
                     reminder_sent=bool(invoice.get("skonto_reminder_sent", False)),
-                    skonto_decision=skonto_decision or "pending"
+                    skonto_decision=skonto_decision or "pending",
+                    reminder_count=reminder_log.get(str(invoice["id"]), {}).get("count", 0),
+                    last_reminder_at=reminder_log.get(str(invoice["id"]), {}).get("last")
                 ))
                 
             except Exception as e:

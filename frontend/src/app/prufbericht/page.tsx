@@ -24,6 +24,17 @@ interface SkontoInvoice {
   processedDate?: string;
   daysRemaining?: number;
   reminderSent?: boolean;
+  reminderCount?: number;
+  lastReminderAt?: string | null;
+}
+
+interface SchedulerRun {
+  started_at: string;
+  trigger: 'startup' | 'interval' | 'manual';
+  invoices_in_window: number;
+  reminders_due: number;
+  reminders_sent: number;
+  errors: string[];
 }
 
 interface SchedulerStatus {
@@ -37,7 +48,23 @@ interface SchedulerStatus {
   };
   last_run: string | null;
   next_run: string | null;
+  history?: {
+    available: boolean;
+    total_runs: number;
+    total_reminders_sent: number;
+    last_run: string | null;
+    recent_runs: SchedulerRun[];
+  };
 }
+
+const TRIGGER_LABELS: Record<SchedulerRun['trigger'], string> = {
+  startup: 'Serverstart',
+  interval: 'Automatisch',
+  manual: 'Manuell',
+};
+
+const formatDateTime = (iso: string) =>
+  new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 export default function PrufberichtPage() {
   const [metrics, setMetrics] = useState<SkontoMetrics | null>(null);
@@ -123,7 +150,9 @@ export default function PrufberichtPage() {
           status: status,
           daysRemaining: opportunity.days_until_expiry || 0,
           processedDate: opportunity.processed_date,
-          reminderSent: opportunity.reminder_sent || false
+          reminderSent: opportunity.reminder_sent || false,
+          reminderCount: opportunity.reminder_count || 0,
+          lastReminderAt: opportunity.last_reminder_at || null
         };
       });
 
@@ -408,26 +437,55 @@ export default function PrufberichtPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 bg-white/30 rounded-lg">
-                    <div className="text-lg font-bold text-gray-900">{schedulerStatus.stats.total_runs}</div>
+                    <div className="text-lg font-bold text-gray-900">{schedulerStatus.history?.available ? schedulerStatus.history.total_runs : schedulerStatus.stats.total_runs}</div>
                     <div className="text-xs text-gray-600">Gesamte Prüfungen</div>
                   </div>
                   <div className="text-center p-3 bg-white/30 rounded-lg">
-                    <div className="text-lg font-bold text-green-600">{schedulerStatus.stats.total_reminders_sent}</div>
+                    <div className="text-lg font-bold text-green-600">{schedulerStatus.history?.available ? schedulerStatus.history.total_reminders_sent : schedulerStatus.stats.total_reminders_sent}</div>
                     <div className="text-xs text-gray-600">Erinnerungen gesendet</div>
                   </div>
                   <div className="text-center p-3 bg-white/30 rounded-lg">
                     <div className="text-lg font-bold text-blue-600">
-                      {schedulerStatus.last_run ? new Date(schedulerStatus.last_run).toLocaleDateString() : 'Nie'}
+                      {(schedulerStatus.history?.last_run || schedulerStatus.last_run) ? formatDateTime((schedulerStatus.history?.last_run || schedulerStatus.last_run) as string) : 'Nie'}
                     </div>
                     <div className="text-xs text-gray-600">Letzte Prüfung</div>
                   </div>
                   <div className="text-center p-3 bg-white/30 rounded-lg">
                     <div className="text-lg font-bold text-purple-600">
-                      {schedulerStatus.next_run ? new Date(schedulerStatus.next_run).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Nicht geplant'}
+                      {schedulerStatus.next_run ? formatDateTime(schedulerStatus.next_run) : 'Nicht geplant'}
                     </div>
                     <div className="text-xs text-gray-600">Nächste Prüfung</div>
                   </div>
                 </div>
+                {schedulerStatus.history?.recent_runs && schedulerStatus.history.recent_runs.length > 0 && (
+                  <div className="mt-4 overflow-x-auto">
+                    <div className="text-sm font-medium text-gray-700 mb-2">Letzte Läufe</div>
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-gray-500 uppercase">
+                          <th className="py-1 pr-4">Zeitpunkt</th>
+                          <th className="py-1 pr-4">Auslöser</th>
+                          <th className="py-1 pr-4">Im Zeitfenster</th>
+                          <th className="py-1 pr-4">Fällig</th>
+                          <th className="py-1 pr-4">Gesendet</th>
+                          <th className="py-1">Fehler</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schedulerStatus.history.recent_runs.map((run) => (
+                          <tr key={run.started_at} className="border-t border-gray-100 text-gray-800">
+                            <td className="py-1 pr-4 whitespace-nowrap">{formatDateTime(run.started_at)}</td>
+                            <td className="py-1 pr-4">{TRIGGER_LABELS[run.trigger] || run.trigger}</td>
+                            <td className="py-1 pr-4">{run.invoices_in_window}</td>
+                            <td className="py-1 pr-4">{run.reminders_due}</td>
+                            <td className="py-1 pr-4 font-medium text-green-700">{run.reminders_sent}</td>
+                            <td className={`py-1 ${run.errors?.length ? 'text-red-600' : 'text-gray-400'}`}>{run.errors?.length || 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 {schedulerStatus.stats.total_errors > 0 && (
                   <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <div className="text-sm text-red-700">
@@ -502,7 +560,9 @@ export default function PrufberichtPage() {
                               : 'bg-gray-50 text-gray-500 border border-gray-200'
                           }`}>
                             <Mail className="h-3 w-3" />
-                            {invoice.reminderSent ? 'Gesendet' : 'Nicht gesendet'}
+                            {invoice.reminderCount
+                              ? `${invoice.reminderCount}× gesendet${invoice.lastReminderAt ? ` · zuletzt ${formatDateTime(invoice.lastReminderAt)}` : ''}`
+                              : invoice.reminderSent ? 'Gesendet' : 'Nicht gesendet'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

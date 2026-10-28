@@ -252,6 +252,23 @@ CREATE TABLE IF NOT EXISTS public.security_events (
 CREATE INDEX IF NOT EXISTS idx_security_events_invoice_id ON public.security_events USING btree (invoice_id) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON public.security_events USING btree (created_at) TABLESPACE pg_default;
 
+-- Skonto scheduler run history (see database/migrations/003_skonto_scheduler_runs.sql)
+CREATE TABLE IF NOT EXISTS public.skonto_scheduler_runs (
+  id UUID NOT NULL DEFAULT gen_random_uuid(),
+  started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMP WITH TIME ZONE,
+  trigger VARCHAR(20) NOT NULL,
+  invoices_in_window INTEGER NOT NULL DEFAULT 0,
+  reminders_due INTEGER NOT NULL DEFAULT 0,
+  reminders_sent INTEGER NOT NULL DEFAULT 0,
+  errors JSONB NOT NULL DEFAULT '[]'::JSONB,
+  dry_run BOOLEAN NOT NULL DEFAULT false,
+  CONSTRAINT skonto_scheduler_runs_pkey PRIMARY KEY (id),
+  CONSTRAINT check_scheduler_trigger CHECK (trigger IN ('startup', 'interval', 'manual'))
+) TABLESPACE pg_default;
+
+CREATE INDEX IF NOT EXISTS idx_skonto_scheduler_runs_started_at ON public.skonto_scheduler_runs USING btree (started_at DESC) TABLESPACE pg_default;
+
 -- =====================================================================
 -- 9. STORAGE BUCKETS (private: PDFs are only served via signed URLs)
 -- =====================================================================
@@ -307,6 +324,7 @@ ALTER TABLE email_audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dropdown_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gewerk_list ENABLE ROW LEVEL SECURITY;
 ALTER TABLE security_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE skonto_scheduler_runs ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================================
 -- SETUP COMPLETE!

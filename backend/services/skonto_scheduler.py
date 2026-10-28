@@ -37,6 +37,7 @@ class SkontoSchedulerService:
         self.config = config or SkontoReminderConfig()
         self.is_running = False
         self.last_run = None
+        self.next_run_at: Optional[datetime] = None
         self.stats = {
             "total_runs": 0,
             "total_reminders_sent": 0,
@@ -60,7 +61,7 @@ class SkontoSchedulerService:
         
         logger.info(f"📋 Skonto Scheduler Config: {self.config}")
     
-    async def check_and_send_reminders(self) -> Dict[str, Any]:
+    async def check_and_send_reminders(self, trigger: str = "manual") -> Dict[str, Any]:
         """
         Main method to check for invoices needing Skonto reminders and send them.
         Returns summary of actions taken.
@@ -89,8 +90,11 @@ class SkontoSchedulerService:
                 early_invoices
             ])
 
+            invoices_in_window = len(all_invoices)
+
             # One reminder per urgency level, not one per run
             all_invoices = [inv for inv in all_invoices if self._reminder_due(inv)]
+            reminders_due = len(all_invoices)
 
             logger.info(f"📊 Found {len(all_invoices)} invoices needing Skonto reminders")
             
@@ -132,6 +136,8 @@ class SkontoSchedulerService:
             
             logger.info(f"✅ Skonto reminder check completed in {duration:.2f}s")
             logger.info(f"📧 Sent {reminders_sent} reminders, {len(errors)} errors")
+
+            self._record_run(trigger, start_time, invoices_in_window, reminders_due, reminders_sent, errors)
             
             return {
                 "enabled": True,
@@ -148,6 +154,7 @@ class SkontoSchedulerService:
             logger.error(error_msg)
             self.stats["last_error"] = error_msg
             self.stats["total_errors"] += 1
+            self._record_run(trigger, start_time, 0, 0, reminders_sent, errors + [error_msg])
             
             return {
                 "enabled": True,
@@ -276,16 +283,17 @@ class SkontoSchedulerService:
         
         # Run immediately on startup
         logger.info("🔄 Running initial Skonto reminder check...")
-        await self.check_and_send_reminders()
+        await self.check_and_send_reminders(trigger="startup")
         
         # Keep the scheduler running
         while self.is_running:
             try:
                 # Wait for the specified interval
+                self.next_run_at = datetime.now() + timedelta(hours=self.config.check_interval_hours)
                 await asyncio.sleep(self.config.check_interval_hours * 3600)  # Convert hours to seconds
                 
                 if self.is_running:  # Check if still running after sleep
-                    await self.check_and_send_reminders()
+                    await self.check_and_send_reminders(trigger="interval")
                     
             except asyncio.CancelledError:
                 logger.info("🛑 Scheduler cancelled")
@@ -302,9 +310,7 @@ class SkontoSchedulerService:
     
     def get_status(self) -> Dict[str, Any]:
         """Get current scheduler status and statistics"""
-        next_run = None
-        if self.is_running and self.last_run:
-            next_run = (self.last_run + timedelta(hours=self.config.check_interval_hours)).isoformat()
+        next_run = self.next_run_at.isoformat() if self.is_running and self.next_run_at else None
         
         return {
             "enabled": self.config.enabled,
@@ -319,8 +325,46 @@ class SkontoSchedulerService:
             },
             "stats": self.stats,
             "last_run": self.last_run.isoformat() if self.last_run else None,
-            "next_run": next_run
+            "next_run": next_run,
+            "history": self.get_run_history()
         }
+
+    def _record_run(self, trigger: str, start_time: datetime, invoices_in_window: int,
+                    reminders_due: int, reminders_sent: int, errors: List[str]) -> None:
+        """Store the run so the scheduler's work survives restarts and can be shown"""
+        try:
+            db_service.client.table("skonto_scheduler_runs").insert({
+                "started_at": start_time.astimezone().isoformat(),
+                "finished_at": datetime.now().astimezone().isoformat(),
+                "trigger": trigger,
+                "invoices_in_window": invoices_in_window,
+                "reminders_due": reminders_due,
+                "reminders_sent": reminders_sent,
+                "errors": errors,
+                "dry_run": self.config.dry_run,
+            }).execute()
+        except Exception as e:
+            logger.warning(f"⚠️ Could not record scheduler run: {e}")
+
+    def get_run_history(self, limit: int = 10) -> Dict[str, Any]:
+        """Totals and most recent runs from the database"""
+        try:
+            response = (db_service.client.table("skonto_scheduler_runs")
+                        .select("started_at,trigger,invoices_in_window,reminders_due,reminders_sent,errors", count="exact")
+                        .order("started_at", desc=True)
+                        .execute())
+            runs = response.data or []
+            return {
+                "available": True,
+                "total_runs": response.count if response.count is not None else len(runs),
+                "total_reminders_sent": sum(r.get("reminders_sent") or 0 for r in runs),
+                "last_run": runs[0]["started_at"] if runs else None,
+                "recent_runs": runs[:limit],
+            }
+        except Exception as e:
+            logger.warning(f"⚠️ Could not load scheduler history: {e}")
+            return {"available": False, "total_runs": 0, "total_reminders_sent": 0,
+                    "last_run": None, "recent_runs": []}
 
 # Global scheduler instance
 skonto_scheduler = SkontoSchedulerService()
