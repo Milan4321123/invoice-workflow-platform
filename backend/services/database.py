@@ -3,7 +3,7 @@ Centralized database service layer for Invoice Management System.
 Handles ALL Supabase database operations in one place.
 Single source of truth for database communication.
 """
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 from supabase import create_client, Client
 import os
 import logging
@@ -30,7 +30,16 @@ class DatabaseService:
             "folder_watcher": "folderwatcher"
         }
         self._initialize_client()
-    
+
+    @staticmethod
+    def _storage_location(file_path: str) -> Tuple[str, str]:
+        """Map a stored file_path to its (bucket, object name), mirroring UploadService"""
+        if file_path.startswith("folder_watcher/"):
+            return "folderwatcher", file_path[len("folder_watcher/"):]
+        if file_path.startswith("manual/"):
+            return "manual-invoices", file_path[len("manual/"):]
+        return "invoices", file_path
+
     def _sanitize_env(self, value: Optional[str]) -> Optional[str]:
         """Strip whitespace and remove non-printable characters from env values."""
         if value is None:
@@ -602,8 +611,9 @@ class DatabaseService:
                 # Also delete from storage if file exists
                 if file_path:
                     try:
-                        self._client.storage.from_("invoices").remove([file_path])
-                        logger.info(f"📁 Successfully deleted file from storage: {file_path}")
+                        bucket, name = self._storage_location(file_path)
+                        self._client.storage.from_(bucket).remove([name])
+                        logger.info(f"📁 Successfully deleted file from storage: {bucket}/{name}")
                     except Exception as storage_error:
                         logger.warning(f"⚠️ Could not delete file from storage: {storage_error}")
                         # Don't fail the whole operation if storage cleanup fails
@@ -704,7 +714,12 @@ class DatabaseService:
                     logger.info(f"📁 Cleaning up {len(file_paths_to_clean)} files from storage...")
                     try:
                         # Bulk delete from storage
-                        self._client.storage.from_("invoices").remove(file_paths_to_clean)
+                        by_bucket: Dict[str, List[str]] = {}
+                        for path in file_paths_to_clean:
+                            bucket, name = self._storage_location(path)
+                            by_bucket.setdefault(bucket, []).append(name)
+                        for bucket, names in by_bucket.items():
+                            self._client.storage.from_(bucket).remove(names)
                         storage_cleaned_count = len(file_paths_to_clean)
                         logger.info(f"✅ Successfully cleaned {storage_cleaned_count} files from storage")
                     except Exception as storage_error:
