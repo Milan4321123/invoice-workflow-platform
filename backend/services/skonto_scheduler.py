@@ -88,7 +88,10 @@ class SkontoSchedulerService:
                 normal_invoices, 
                 early_invoices
             ])
-            
+
+            # One reminder per urgency level, not one per run
+            all_invoices = [inv for inv in all_invoices if self._reminder_due(inv)]
+
             logger.info(f"📊 Found {len(all_invoices)} invoices needing Skonto reminders")
             
             # Limit batch size
@@ -170,6 +173,37 @@ class SkontoSchedulerService:
             logger.error(f"❌ Exception getting invoices with Skonto due: {str(e)}")
             return []
     
+    def _urgency_level(self, days_left: int) -> Optional[int]:
+        """Map days until the Skonto deadline to the reminder level (1, 3 or 7 days)"""
+        for level in sorted([self.config.days_ahead_urgent,
+                             self.config.days_ahead_normal,
+                             self.config.days_ahead_early]):
+            if days_left <= level:
+                return level
+        return None
+
+    def _reminder_due(self, invoice: Dict[str, Any]) -> bool:
+        """
+        True if the invoice reached a more urgent level than at its last reminder.
+        Gives at most one mail per level (7, 3, 1 days before), however often the check runs.
+        """
+        try:
+            skonto_date = datetime.fromisoformat(str(invoice["skonto_datum"])[:10]).date()
+        except (KeyError, ValueError):
+            return True  # can't tell, let the normal flow decide
+
+        level_now = self._urgency_level((skonto_date - datetime.now().date()).days)
+        if level_now is None:
+            return False
+
+        sent_at = invoice.get("skonto_reminder_sent_at")
+        if not invoice.get("skonto_reminder_sent") or not sent_at:
+            return True
+
+        sent_date = datetime.fromisoformat(str(sent_at).replace("Z", "+00:00")).date()
+        level_then = self._urgency_level((skonto_date - sent_date).days)
+        return level_then is None or level_now < level_then
+
     def _deduplicate_invoices(self, invoice_lists: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
         """Remove duplicate invoices from combined lists"""
         seen_ids = set()
