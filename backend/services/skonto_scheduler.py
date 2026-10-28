@@ -56,7 +56,8 @@ class SkontoSchedulerService:
         self.config.days_ahead_normal = int(os.getenv("SKONTO_DAYS_AHEAD_NORMAL", "3"))
         self.config.days_ahead_early = int(os.getenv("SKONTO_DAYS_AHEAD_EARLY", "7"))
         self.config.max_reminders_per_run = int(os.getenv("SKONTO_MAX_REMINDERS_PER_RUN", "50"))
-        self.config.default_recipient_email = os.getenv("SKONTO_DEFAULT_RECIPIENT")
+        # Skonto is a payment decision, so reminders go to accounting
+        self.config.default_recipient_email = os.getenv("ACCOUNTING_EMAIL") or os.getenv("SKONTO_DEFAULT_RECIPIENT")
         self.config.dry_run = os.getenv("SKONTO_DRY_RUN", "false").lower() == "true"
         
         logger.info(f"📋 Skonto Scheduler Config: {self.config}")
@@ -180,6 +181,18 @@ class SkontoSchedulerService:
             logger.error(f"❌ Exception getting invoices with Skonto due: {str(e)}")
             return []
     
+    def skonto_recipient(self, invoice: Dict[str, Any]) -> Optional[str]:
+        """
+        Accounting decides whether to pay early, so Skonto reminders go there.
+        Falls back to the invoice's Bauleiter only when no accounting address is set.
+        """
+        if self.config.default_recipient_email:
+            return self.config.default_recipient_email
+        fallback = invoice.get("bauleiter_email")
+        if fallback:
+            logger.warning("⚠️ ACCOUNTING_EMAIL not set, sending Skonto reminder to the Bauleiter instead")
+        return fallback
+
     def _urgency_level(self, days_left: int) -> Optional[int]:
         """Map days until the Skonto deadline to the reminder level (1, 3 or 7 days)"""
         for level in sorted([self.config.days_ahead_urgent,
@@ -236,11 +249,7 @@ class SkontoSchedulerService:
             invoice_id = invoice_data.get("id", "Unknown")
             logger.info(f"📧 Preparing Skonto reminder for invoice {invoice_id}")
             
-            # Determine recipient email
-            recipient_email = (
-                invoice_data.get("bauleiter_email") or 
-                self.config.default_recipient_email
-            )
+            recipient_email = self.skonto_recipient(invoice_data)
             
             if not recipient_email:
                 logger.error(f"❌ No recipient email found for invoice {invoice_id}")

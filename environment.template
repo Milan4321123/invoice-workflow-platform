@@ -34,6 +34,9 @@ FROM_NAME=Invoice System
 EMAIL_DEMO_MODE=false
 # Public URL of the backend, used for the approval links in emails
 BASE_URL=http://localhost:8000
+# Accounting decides on early payment, so Skonto reminders go here
+# (approval requests still go to the Bauleiter entered per invoice)
+ACCOUNTING_EMAIL=buchhaltung@yourcompany.com
 
 # =====================================================================
 # FOLDER WATCHER - OPTIONAL

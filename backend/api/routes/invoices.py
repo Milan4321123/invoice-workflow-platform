@@ -653,12 +653,13 @@ async def send_skonto_reminder(
         
         # Use provided email or fall back to default stakeholder
         if not recipient_email:
-            # Default to bauleiter_email or a configured default
-            recipient_email = invoice_data.get("bauleiter_email") or os.getenv("SKONTO_DEFAULT_RECIPIENT") or os.getenv("DEFAULT_ADMIN_EMAIL")
+            # Same rule as the scheduler: accounting first
+            from services.skonto_scheduler import skonto_scheduler
+            recipient_email = skonto_scheduler.skonto_recipient(invoice_data)
             if not recipient_email:
                 raise HTTPException(
                     status_code=400,
-                    detail="Kein Empfänger: Rechnung hat keine Bauleiter-E-Mail und SKONTO_DEFAULT_RECIPIENT ist nicht gesetzt"
+                    detail="Kein Empfänger: ACCOUNTING_EMAIL ist nicht gesetzt und die Rechnung hat keine Bauleiter-E-Mail"
                 )
             logger.info(f"📧 Using default recipient email: {recipient_email}")
         
