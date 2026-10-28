@@ -234,7 +234,36 @@ CREATE TABLE IF NOT EXISTS public.gewerk_list (
 ) TABLESPACE pg_default;
 
 -- =====================================================================
--- 8. INSERT DEFAULT DATA (Required for app to work)
+-- 8. SECURITY EVENTS TABLE (Audit trail for approval links)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.security_events (
+  id UUID NOT NULL DEFAULT gen_random_uuid(),
+  event_type VARCHAR(100) NOT NULL,
+  ip_address VARCHAR(45),
+  user_email VARCHAR(255),
+  invoice_id UUID,
+  event_data JSONB,
+  risk_level VARCHAR(20) DEFAULT 'low',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT security_events_pkey PRIMARY KEY (id)
+) TABLESPACE pg_default;
+
+CREATE INDEX IF NOT EXISTS idx_security_events_invoice_id ON public.security_events USING btree (invoice_id) TABLESPACE pg_default;
+CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON public.security_events USING btree (created_at) TABLESPACE pg_default;
+
+-- =====================================================================
+-- 9. STORAGE BUCKETS (private: PDFs are only served via signed URLs)
+-- =====================================================================
+
+INSERT INTO storage.buckets (id, name, public) VALUES
+('invoices', 'invoices', false),
+('folderwatcher', 'folderwatcher', false),
+('manual-invoices', 'manual-invoices', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================================
+-- 10. INSERT DEFAULT DATA (Required for app to work)
 -- =====================================================================
 
 -- NOTE: Default admin user will be created automatically by the application
@@ -265,30 +294,25 @@ INSERT INTO gewerk_list (code, name, sort_order) VALUES
 ON CONFLICT (code) DO NOTHING;
 
 -- =====================================================================
--- 9. ENABLE ROW LEVEL SECURITY (RLS) - Optional but recommended
+-- 11. ROW LEVEL SECURITY
 -- =====================================================================
 
--- Enable RLS on tables (you can configure policies later)
+-- RLS on, no policies: the public anon key can read nothing. The backend
+-- connects with the service-role key (SUPA_KEY), which bypasses RLS, so
+-- all data access goes through the API.
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices_clean ENABLE ROW LEVEL SECURITY;
 ALTER TABLE approval_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dropdown_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gewerk_list ENABLE ROW LEVEL SECURITY;
-
--- Create basic policies (allow all for now - tighten later)
-CREATE POLICY "Allow all operations for authenticated users" ON users FOR ALL USING (true);
-CREATE POLICY "Allow all operations for authenticated users" ON invoices_clean FOR ALL USING (true);
-CREATE POLICY "Allow all operations for authenticated users" ON approval_tokens FOR ALL USING (true);
-CREATE POLICY "Allow all operations for authenticated users" ON email_audit_log FOR ALL USING (true);
-CREATE POLICY "Allow all operations for authenticated users" ON dropdown_options FOR ALL USING (true);
-CREATE POLICY "Allow all operations for authenticated users" ON gewerk_list FOR ALL USING (true);
+ALTER TABLE security_events ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================================
--- SETUP COMPLETE! 
+-- SETUP COMPLETE!
 -- =====================================================================
 -- Next steps:
--- 1. Create Supabase Storage Buckets (see instructions below)
--- 2. Update your .env files with new Supabase credentials
--- 3. Test your application connection
+-- 1. Put the project URL and the service_role key into .env
+--    (SUPA_URL, SUPA_KEY and SUPA_SERVICE_ROLE_KEY)
+-- 2. Start the backend; it creates the admin user from ADMIN_* variables
 -- =====================================================================
