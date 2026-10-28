@@ -23,6 +23,7 @@ class SkontoSummaryResponse(BaseModel):
     monthly_average_savings: float
     success_rate: float
     reminders_sent_count: int
+    open_count: int = 0
 
 class SkontoPerformanceResponse(BaseModel):
     month: str
@@ -83,51 +84,65 @@ async def get_skonto_summary():
         invoices = skonto_opportunities["data"]
         
         # Calculate summary metrics
-        total_opportunities = len(invoices)
-        total_potential_savings = 0.0
-        urgent_count = 0
-        urgent_potential = 0.0
-        
+        from collections import defaultdict
         from datetime import datetime, timedelta
         today = datetime.now().date()
         urgent_cutoff = today + timedelta(days=3)
-        
+
+        def parse_date(value):
+            if not value:
+                return None
+            if not isinstance(value, str):
+                return value
+            try:
+                if "." in value:
+                    return datetime.strptime(value, "%d.%m.%Y").date()
+                return datetime.strptime(value[:10], "%Y-%m-%d").date()
+            except ValueError:
+                return None
+
+        total_opportunities = len(invoices)
+        total_potential_savings = 0.0
+        open_count = 0
+        urgent_count = 0
+        urgent_potential = 0.0
+        taken_count = 0
+        missed_count = 0
+        reminders_sent_count = 0
+        savings_by_month = defaultdict(float)
+
         for invoice in invoices:
-            # Calculate potential savings
             amount = invoice.get("rechnungsbetrag", 0) or 0
             percentage = invoice.get("skonto_prozent", 0) or 0
             potential = float(amount) * float(percentage) / 100 if amount and percentage else 0
             total_potential_savings += potential
-            
-            # Check if urgent (expiring within 3 days)
-            skonto_datum = invoice.get("skonto_datum")
-            if skonto_datum:
-                try:
-                    if isinstance(skonto_datum, str):
-                        if "-" in skonto_datum:
-                            skonto_date = datetime.strptime(skonto_datum, "%Y-%m-%d").date()
-                        else:
-                            skonto_date = datetime.strptime(skonto_datum, "%d.%m.%Y").date()
-                    else:
-                        skonto_date = skonto_datum
-                    
-                    if skonto_date <= urgent_cutoff:
-                        urgent_count += 1
-                        urgent_potential += potential
-                except:
-                    logger.warning(f"Could not parse skonto date: {skonto_datum}")
-        
-        # Get historical performance (simplified)
-        # For now, use default values since we need proper aggregation queries
-        monthly_average_savings = 0.0
-        success_rate = 0.0
-        reminders_sent_count = 0
-        
-        # Count reminders sent
-        for invoice in invoices:
+
+            decision = invoice.get("skonto_decision") or "pending"
+            skonto_date = parse_date(invoice.get("skonto_datum"))
+
+            if decision == "taken":
+                taken_count += 1
+                saved = invoice.get("actual_skonto_savings")
+                month = skonto_date.strftime("%Y-%m") if skonto_date else "unknown"
+                savings_by_month[month] += float(saved) if saved is not None else potential
+            elif decision == "missed":
+                missed_count += 1
+            elif decision == "pending" and skonto_date and skonto_date >= today:
+                # Only undecided, still reachable discounts are open or urgent
+                open_count += 1
+                if skonto_date <= urgent_cutoff:
+                    urgent_count += 1
+                    urgent_potential += potential
+
             if invoice.get("skonto_reminder_sent"):
                 reminders_sent_count += 1
-        
+
+        decided = taken_count + missed_count
+        success_rate = round(100.0 * taken_count / decided, 1) if decided else 0.0
+        monthly_average_savings = (
+            round(sum(savings_by_month.values()) / len(savings_by_month), 2) if savings_by_month else 0.0
+        )
+
         response = SkontoSummaryResponse(
             total_opportunities=total_opportunities,
             total_potential_savings=total_potential_savings,
@@ -135,7 +150,8 @@ async def get_skonto_summary():
             urgent_potential=urgent_potential,
             monthly_average_savings=monthly_average_savings,
             success_rate=success_rate,
-            reminders_sent_count=reminders_sent_count
+            reminders_sent_count=reminders_sent_count,
+            open_count=open_count
         )
         
         logger.info(f"✅ Skonto summary: {response.total_opportunities} opportunities, €{response.total_potential_savings:.2f} potential")

@@ -9,7 +9,7 @@ interface SkontoMetrics {
   capturedSkonto: number;
   missedSkonto: number;
   pendingReview: number;
-  averageProcessingTime: number;
+  successRate: number;
 }
 
 interface SkontoInvoice {
@@ -91,8 +91,8 @@ export default function PrufberichtPage() {
         totalSkontoAmount: metricsData.total_potential_savings || 0,
         capturedSkonto: 0, // Will be calculated from transformed invoices
         missedSkonto: 0,   // Will be calculated from transformed invoices
-        pendingReview: metricsData.urgent_count || 0,
-        averageProcessingTime: 2.3 // Default for now
+        pendingReview: metricsData.open_count || 0,
+        successRate: metricsData.success_rate || 0
       };
 
       // Transform opportunities data to match our interface
@@ -636,8 +636,8 @@ export default function PrufberichtPage() {
                   <div className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600 mb-1">Ø Bearbeitung</p>
-                        <p className="text-2xl font-bold text-gray-900">{metrics.averageProcessingTime.toFixed(1)}T</p>
+                        <p className="text-sm font-medium text-gray-600 mb-1">Erfolgsquote</p>
+                        <p className="text-2xl font-bold text-gray-900">{metrics.successRate.toFixed(0)}%</p>
                       </div>
                       <div className="h-12 w-12 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
                         <Clock className="h-6 w-6 text-white" />
