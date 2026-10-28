@@ -428,21 +428,17 @@ class EmailService:
                 </div>
             </div>
 
-            <!-- Action Buttons (Non-functional) -->
+            <!-- Action Buttons -->
             <div class="action-buttons">
                 <h3>🎯 Genehmigung erforderlich</h3>
                 <p style="color: #4a5568; margin-bottom: 25px;">
-                    Die Genehmigungsfunktion wird nach der Unternehmens-Konfiguration verfügbar sein:
+                    Bitte prüfen Sie die Rechnung und entscheiden Sie mit einem Klick:
                 </p>
-                <div style="display: inline-block; padding: 16px 32px; background: #6c757d; color: white; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px; cursor: not-allowed;">
-                    ✅ RECHNUNG GENEHMIGEN - Nicht verfügbar
-                </div>
-                <div style="display: inline-block; padding: 16px 32px; background: #6c757d; color: white; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px; cursor: not-allowed;">
-                    ❌ RECHNUNG ABLEHNEN - Nicht verfügbar
-                </div>
+                <a href="{{ approve_url }}" style="display: inline-block; padding: 16px 32px; background: #38a169; color: #ffffff; text-decoration: none; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px;">✅ RECHNUNG GENEHMIGEN</a>
+                <a href="{{ reject_url }}" style="display: inline-block; padding: 16px 32px; background: #e53e3e; color: #ffffff; text-decoration: none; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px;">❌ RECHNUNG ABLEHNEN</a>
                 <br><br>
                 <p style="font-size: 14px; color: #718096;">
-                    Die Genehmigungsfunktion wird aktiviert, sobald die Unternehmens-Konfiguration abgeschlossen ist.
+                    Jeder Link kann nur einmal verwendet werden.
                 </p>
             </div>
 
@@ -642,21 +638,17 @@ class EmailService:
             </div>
             {% endif %}
 
-            <!-- Action Buttons (Non-functional) -->
+            <!-- Action Buttons -->
             <div class="action-buttons">
                 <h3>🎯 Entscheidung erforderlich</h3>
                 <p style="color: #4a5568; margin-bottom: 25px;">
-                    Die Skonto-Entscheidungsfunktion wird nach der Unternehmens-Konfiguration verfügbar sein:
+                    Soll das Skonto genutzt werden?
                 </p>
-                <div style="display: inline-block; padding: 15px 30px; background: #6c757d; color: white; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px; cursor: not-allowed;">
-                    ✅ SKONTO NEHMEN - Nicht verfügbar
-                </div>
-                <div style="display: inline-block; padding: 15px 30px; background: #6c757d; color: white; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px; cursor: not-allowed;">
-                    ⏭️ SKONTO ÜBERSPRINGEN - Nicht verfügbar
-                </div>
+                <a href="{{ take_skonto_url }}" style="display: inline-block; padding: 16px 32px; background: #38a169; color: #ffffff; text-decoration: none; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px;">✅ SKONTO NEHMEN</a>
+                <a href="{{ skip_skonto_url }}" style="display: inline-block; padding: 16px 32px; background: #718096; color: #ffffff; text-decoration: none; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px;">⏭️ SKONTO ÜBERSPRINGEN</a>
                 <br><br>
                 <p style="font-size: 14px; color: #718096;">
-                    Die Skonto-Entscheidungsfunktion wird aktiviert, sobald die Unternehmens-Konfiguration abgeschlossen ist.
+                    Jeder Link kann nur einmal verwendet werden.
                 </p>
             </div>
 
