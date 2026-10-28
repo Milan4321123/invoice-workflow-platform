@@ -92,15 +92,24 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# Ensure frontend has .env file
-if [ ! -f ".env" ]; then
-    echo -e "${BLUE}📝 Creating frontend .env file...${NC}"
-    cp ../.env .env
+# The frontend only needs the public backend URL, not the backend secrets
+API_URL=$(grep -E '^NEXT_PUBLIC_API_URL=' ../.env | cut -d= -f2-)
+echo "NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000}" > .env.local
+rm -f .env
+
+# Production build (rebuilt only when the code or config changed)
+if [ ! -f ".next/BUILD_ID" ] || [ -n "$(find src public next.config.js package.json .env.local -newer .next/BUILD_ID 2>/dev/null | head -1)" ]; then
+    echo -e "${BLUE}🏗️  Building frontend (about a minute)...${NC}"
+    if ! NODE_ENV=production npm run build > ../frontend-build.log 2>&1; then
+        echo -e "${RED}❌ Frontend build failed. Check frontend-build.log for errors.${NC}"
+        kill $BACKEND_PID 2>/dev/null
+        exit 1
+    fi
 fi
 
 # Start frontend in background
 echo -e "${GREEN}🚀 Starting frontend on http://localhost:3000${NC}"
-npm run dev > ../frontend.log 2>&1 &
+NODE_ENV=production npm run start > ../frontend.log 2>&1 &
 FRONTEND_PID=$!
 
 # Wait a moment for frontend to start
