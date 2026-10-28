@@ -276,7 +276,25 @@ async def startup_event():
         
     except Exception as e:
         logger.error(f"❌ Failed to start Skonto scheduler: {e}")
-    
+
+    # Watch folders are kept in memory, so restore the configured one on every start
+    watch_path = os.getenv("FOLDER_WATCHER_PATH")
+    if watch_path:
+        try:
+            from services.folder_watcher import folder_watcher_service
+
+            added, _, add_error = await folder_watcher_service.add_watch_folder(watch_path)
+            if not added:
+                logger.error(f"❌ Could not watch {watch_path}: {add_error}")
+            else:
+                started, start_error = await folder_watcher_service.start_watcher()
+                if started:
+                    logger.info(f"📁 Folder watcher running on {watch_path}")
+                else:
+                    logger.error(f"❌ Failed to start folder watcher: {start_error}")
+        except Exception as e:
+            logger.error(f"❌ Folder watcher setup error: {e}")
+
     logger.info("✅ Application startup complete")
 
 if __name__ == "__main__":

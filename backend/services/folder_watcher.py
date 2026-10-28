@@ -96,6 +96,19 @@ class InvoiceFileHandler(FileSystemEventHandler):
         """Handle file modification events (sometimes files are written in chunks)"""
         if not event.is_directory:
             self._handle_file_event(event.src_path, "modified")
+
+    def on_deleted(self, event):
+        """Forget a file once it leaves the folder, so a new file at that path is processed"""
+        if not event.is_directory:
+            self.processed_files.discard(event.src_path)
+
+    def on_moved(self, event):
+        """Treat a move out as a delete and a move in (e.g. a finished download) as a new file"""
+        if not event.is_directory:
+            self.processed_files.discard(event.src_path)
+            watched = os.path.realpath(self.watch_config.folder_path)
+            if os.path.realpath(event.dest_path).startswith(watched + os.sep):
+                self._handle_file_event(event.dest_path, "moved")
     
     def _handle_file_event(self, file_path: str, event_type: str):
         """Process file system events with enhanced validation"""

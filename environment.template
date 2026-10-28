@@ -27,8 +27,19 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 # EMAIL SERVICE (SendGrid) - REQUIRED
 # =====================================================================
 SENDGRID_API_KEY=SG.your-sendgrid-api-key-here
+# Must be a verified sender (or domain) in your SendGrid account
 FROM_EMAIL=noreply@yourcompany.com
 FROM_NAME=Invoice System
+# true = don't send, save each mail as HTML in backend/outbox/ instead
+EMAIL_DEMO_MODE=false
+# Public URL of the backend, used for the approval links in emails
+BASE_URL=http://localhost:8000
+
+# =====================================================================
+# FOLDER WATCHER - OPTIONAL
+# =====================================================================
+# New PDFs dropped into this folder are imported automatically
+FOLDER_WATCHER_PATH=
 
 # =====================================================================
 # SECURITY - REQUIRED
