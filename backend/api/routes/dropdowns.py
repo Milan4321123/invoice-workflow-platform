@@ -158,11 +158,14 @@ async def get_dropdown_options(field_name: str):
 @router.get("/dropdowns")
 async def get_all_dropdown_options():
     """Get all dropdown options for all fields"""
-    all_dropdowns = {}
     valid_field_names = _get_valid_field_names()
-    
-    for field_name in valid_field_names:
-        all_dropdowns[field_name] = _get_all_options_for_field(field_name)
+
+    # One query for all fields instead of one per field
+    db_options = _get_dropdown_options_from_db()
+    all_dropdowns = {
+        field_name: db_options.get(field_name) or FALLBACK_DROPDOWN_OPTIONS[field_name]
+        for field_name in valid_field_names
+    }
     
     return {
         "dropdowns": all_dropdowns,
