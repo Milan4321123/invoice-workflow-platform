@@ -8,6 +8,7 @@ import json
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, Any, Optional, List
 from uuid import UUID
 
@@ -1403,6 +1404,12 @@ class EmailService:
                 logger.info(f"📧 DEMO MODE: Email would be sent to {to_email}")
                 logger.info(f"   Subject: {subject}")
                 logger.info(f"   Type: {email_type}")
+                # Keep a copy so the links in the mail can be clicked locally
+                outbox_dir = Path(os.getenv("EMAIL_OUTBOX_DIR", "outbox"))
+                outbox_dir.mkdir(parents=True, exist_ok=True)
+                outbox_file = outbox_dir / f"{start_time:%Y%m%d_%H%M%S}_{email_type}.html"
+                outbox_file.write_text(html_content, encoding="utf-8")
+                logger.info(f"   Saved to: {outbox_file.resolve()}")
                 return {
                     "success": True,
                     "provider": "demo",

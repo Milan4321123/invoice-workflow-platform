@@ -140,3 +140,6 @@ pids
 
 # Supabase
 .supabase/
+# Mails written in EMAIL_DEMO_MODE
+outbox/
+backend/outbox/
