@@ -1355,6 +1355,7 @@ class EmailService:
                     "success": True,
                     "message": f"Skonto reminder sent successfully to {recipient_email}",
                     "message_id": result.get("message_id"),
+                    "provider": result.get("provider"),
                     "timestamp": datetime.now().isoformat(),
                     "potential_savings": potential_savings,
                     "days_until_expiry": days_until_expiry

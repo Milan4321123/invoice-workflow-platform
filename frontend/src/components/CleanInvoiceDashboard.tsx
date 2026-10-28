@@ -262,7 +262,10 @@ export default function CleanInvoiceDashboard() {
       const result = await response.json();
       
       // Show success message with email status
-      if (result.email_sent) {
+      if (result.email_sent && result.email_provider === 'demo') {
+        toast.success(`📁 Demo-Modus: E-Mail an ${bauleiterEmail} wurde nicht versendet, sondern in backend/outbox gespeichert.`, { duration: 6000 });
+        await fetchInvoices();
+      } else if (result.email_sent) {
         toast.success(`✅ E-Mail erfolgreich an ${bauleiterEmail} gesendet!`);
         // Refresh the list to show updated status
         await fetchInvoices();

@@ -160,7 +160,10 @@ export default function PrufberichtPage() {
       });
       
       if (response.ok) {
-        alert('✅ Erinnerung erfolgreich gesendet!');
+        const result = await response.json();
+        alert(result.email_provider === 'demo'
+          ? '📁 Demo-Modus: Die Erinnerung wurde nicht versendet, sondern in backend/outbox gespeichert.'
+          : '✅ Erinnerung erfolgreich gesendet!');
         // Refresh data after action
         await fetchData();
       } else {

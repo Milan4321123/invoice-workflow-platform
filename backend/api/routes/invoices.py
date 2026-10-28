@@ -556,7 +556,8 @@ async def send_invoice_to_bauleiter(
         # Send Bauleiter approval email using existing email service
         email_sent = False
         email_error = None
-        
+        email_provider = None
+
         try:
             # Prepare email data
             editor_name = request_data.get("editor_name", sent_by)
@@ -574,6 +575,7 @@ async def send_invoice_to_bauleiter(
             
             if email_result["success"]:
                 email_sent = True
+                email_provider = email_result.get("provider")
                 logger.info(f"✅ Invoice {invoice_id} sent to Bauleiter {bauleiter_email} successfully")
             else:
                 email_error = email_result.get("error", "Unknown email error")
@@ -593,6 +595,7 @@ async def send_invoice_to_bauleiter(
             "bauleiter_email": bauleiter_email,
             "sent_at": updated_invoice.get("sent_to_bauleiter_at"),
             "email_sent": email_sent,
+            "email_provider": email_provider,
             "email_error": email_error
         }
         
@@ -669,6 +672,7 @@ async def send_skonto_reminder(
                 "invoice_id": invoice_id,
                 "recipient_email": recipient_email,
                 "message_id": email_result.get("message_id"),
+                "email_provider": email_result.get("provider"),
                 "potential_savings": email_result.get("potential_savings"),
                 "days_until_expiry": email_result.get("days_until_expiry"),
                 "sent_at": email_result.get("timestamp")
