@@ -18,7 +18,8 @@ import {
   LogOut,
   User,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useT } from '@/i18n/LanguageContext';
@@ -46,6 +47,7 @@ const Navigation = () => {
     { href: '/dashboard/folder-watcher', label: t('nav.folderWatcher'), icon: FolderOpen },
     { href: '/prufbericht', label: t('nav.report'), icon: BarChart3 },
     { href: '/health', label: t('nav.health'), icon: Activity },
+    { href: '/assistent', label: t('nav.assistant'), icon: Sparkles },
     { href: '/datenschutz-anfragen', label: t('nav.privacy'), icon: ShieldCheck },
   ];
 
@@ -83,6 +85,7 @@ const Navigation = () => {
                   key={item.href}
                   href={item.href}
                   aria-current={isActive ? 'page' : undefined}
+                  title={item.label}
                   className={`
                     relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
                     flex items-center space-x-2 group
@@ -93,7 +96,7 @@ const Navigation = () => {
                   `}
                 >
                   <Icon aria-hidden="true" className={`h-4 w-4 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}`} />
-                  <span className="sr-only xl:not-sr-only">{item.label}</span>
+                  <span className="sr-only 2xl:not-sr-only">{item.label}</span>
                   {isActive && (
                     <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full"></div>
                   )}

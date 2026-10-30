@@ -9,6 +9,7 @@ import TaxDetailsSection from './compliance/TaxDetailsSection';
 import ComplianceChecklist from './compliance/ComplianceChecklist';
 import AuditHistory from './compliance/AuditHistory';
 import { useT } from '@/i18n/LanguageContext';
+import AiExtractionPanel from './ai/AiExtractionPanel';
 
 // German invoice field types
 export interface GermanInvoiceFields {
@@ -50,6 +51,8 @@ interface PendingChange {
 
 interface CleanInvoiceFormProps {
   invoiceId?: string;
+  /** Offer "read fields" for PDFs without e-invoice data */
+  aiExtraction?: { mode: 'live' | 'offline' | null } | null;
   fields: GermanInvoiceFields;
   onFieldChange: (fieldName: string, value: any) => void;
   onSave: () => void;
@@ -61,6 +64,7 @@ interface CleanInvoiceFormProps {
 
 const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
   invoiceId,
+  aiExtraction = null,
   fields,
   onFieldChange,
   onSave,
@@ -585,6 +589,10 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
               </div>
             )}
         
+        {invoiceId && aiExtraction && (
+          <AiExtractionPanel invoiceId={invoiceId} aiMode={aiExtraction.mode} onApply={onFieldChange} />
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Dropdown Fields */}
           <div className="space-y-6">

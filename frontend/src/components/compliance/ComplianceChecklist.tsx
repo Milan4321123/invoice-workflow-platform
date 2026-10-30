@@ -7,6 +7,7 @@ import { authFetch } from '@/lib/authFetch';
 import type { GermanInvoiceFields } from '../CleanInvoiceForm';
 import { useT } from '@/i18n/LanguageContext';
 import type { MessageKey } from '@/i18n/messages';
+import CorrectionDraftButton from '../ai/CorrectionDraftButton';
 
 type Severity = 'error' | 'warning' | 'info';
 
@@ -101,6 +102,8 @@ export default function ComplianceChecklist({ invoiceId, fields }: { invoiceId: 
           </p>
         )}
       </div>
+
+      {report && report.status !== 'ok' && <CorrectionDraftButton invoiceId={invoiceId} />}
 
       {report && report.findings.length > 0 && (
         <ul className="mt-4 space-y-3">

@@ -28,6 +28,14 @@ export default function InvoiceEditorDashboard({
   const [mimeType, setMimeType] = useState<string | null>(null);
   const [eRechnungFormat, setERechnungFormat] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
+  const [aiMode, setAiMode] = useState<'live' | 'offline' | null>(null);
+
+  useEffect(() => {
+    authFetch(`${getApiUrl()}/api/ai/status`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((status) => status && setAiMode(status.mode))
+      .catch(() => setAiMode(null));
+  }, []);
   const { locale, t } = useLanguage();
   const [retentionUntil, setRetentionUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(!initialData);
@@ -337,6 +345,7 @@ export default function InvoiceEditorDashboard({
           <div className="flex-1 h-full overflow-hidden">
             <CleanInvoiceForm
               invoiceId={invoiceId}
+              aiExtraction={!eRechnungFormat && !locked && mimeType !== 'application/xml' ? { mode: aiMode } : null}
               fields={fields}
               onFieldChange={(fieldName: string, value: any) => handleFieldChange(fieldName as keyof GermanInvoiceFields, value)}
               onSave={() => handleSave(fields)}
