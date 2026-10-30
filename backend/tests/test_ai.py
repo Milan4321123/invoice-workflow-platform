@@ -142,6 +142,7 @@ def test_offline_correction_lists_supplier_problems_only(demo_db):
     becker = invoice_named(demo_db, "20261005_HAFEN_SANITAER_Becker.pdf")
     draft = correction.draft(becker, check_invoice(becker))
     assert draft["subject"].startswith("Bitte um Rechnungsberichtigung")
+    assert "über 1.090,60 €" in draft["subject"]
     assert "Rechnungsnummer fehlt" in draft["body"]
     assert "Bauabzugsteuer" not in draft["body"]            # internal matter, not the supplier's error
     assert draft["body"].rstrip().endswith("[Name]")
@@ -283,3 +284,13 @@ def test_api_maps_refusals_to_422(client, auth_headers, live):
     response_ = client.post("/api/ai/ask", json={"question": "Welche Angaben muss eine Rechnung enthalten?"},
                             headers=auth_headers)
     assert response_.status_code == 422
+
+
+@pytest.mark.parametrize("question, english", [
+    ("Which discounts expire soon?", True),
+    ("What is wrong with the Becker invoice?", True),
+    ("Welches Skonto läuft bald ab?", False),
+    ("Was ist mit der Rechnung von Becker?", False),
+])
+def test_question_language(question, english):
+    assert rag.is_english(question) is english

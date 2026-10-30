@@ -21,7 +21,11 @@ SYSTEM = (
     "advice: for unusual cases, suggest checking with the tax advisor."
 )
 
-_ENGLISH = {"the", "is", "what", "does", "do", "how", "which", "when", "an", "for", "invoice", "must", "need"}
+_ENGLISH = set("""
+the is are what does do did how which when why who where an for of with from this that these will would can
+invoice invoices discount discounts expire expires soon next week month show list me my our have has must need
+should wrong about tell please
+""".split())
 
 
 def is_english(text: str) -> bool:

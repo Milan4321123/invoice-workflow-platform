@@ -51,14 +51,21 @@ def draft(invoice: Dict[str, Any], findings: List[Finding]) -> Dict[str, Any]:
     return _draft_offline(invoice, points)
 
 
+def _euro(value: Any) -> str:
+    return f"{float(value):,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def _reference(invoice: Dict[str, Any]) -> str:
-    number = invoice.get("rechnungsnummer")
-    date = invoice.get("rechnungsdatum")
-    if number and date:
-        return f"Ihre Rechnung {number} vom {date[8:10]}.{date[5:7]}.{date[:4]}"
-    if number:
-        return f"Ihre Rechnung {number}"
-    return f"Ihre Rechnung über {invoice.get('rechnungsbetrag') or '—'} €"
+    """'Ihre Rechnung RE-17 vom 18.10.2026 über 1.190,00 €', with whatever of that is known"""
+    parts = ["Ihre Rechnung"]
+    if invoice.get("rechnungsnummer"):
+        parts.append(str(invoice["rechnungsnummer"]))
+    issued = str(invoice.get("rechnungsdatum") or "")
+    if len(issued) >= 10:
+        parts.append(f"vom {issued[8:10]}.{issued[5:7]}.{issued[:4]}")
+    if invoice.get("rechnungsbetrag") not in (None, ""):
+        parts.append(f"über {_euro(invoice['rechnungsbetrag'])}")
+    return " ".join(parts)
 
 
 def _draft_offline(invoice: Dict[str, Any], points: List[Finding]) -> Dict[str, Any]:

@@ -264,6 +264,13 @@ def answer_offline(question: str, db: Any) -> Dict[str, Any]:
     """
     tools = Tools(db)
     english = rag.is_english(question)
+
+    def money(value: float) -> str:
+        return f"{value:,.2f} €" if english else f"{value:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def percent(value: Any) -> str:
+        text = f"{float(value or 0):g} %"
+        return text if english else text.replace(".", ",")
     lowered = question.lower()
     trace: List[Dict[str, Any]] = []
 
@@ -274,10 +281,11 @@ def answer_offline(question: str, db: Any) -> Dict[str, Any]:
     invoice = _match_invoice(tools, question)
     if "skonto" in lowered or "discount" in lowered:
         result = call("list_skonto_deadlines", days=14)
-        lines = [f"- {i['rechnungssteller']} {i['rechnungsnummer'] or ''}: {i['skonto_prozent']} % "
-                 f"({i['saving_eur']:.2f} €), {i['days_left']} Tag(e)" for i in result["invoices"]]
-        head = (f"Early-payment discounts ending in the next 14 days (total {result['total_saving_eur']:.2f} €):"
-                if english else f"Skonto, das in den nächsten 14 Tagen endet (zusammen {result['total_saving_eur']:.2f} €):")
+        lines = [f"- {i['rechnungssteller']} {i['rechnungsnummer'] or ''}: {percent(i['skonto_prozent'])} "
+                 f"({money(i['saving_eur'])}), " + (f"{i['days_left']} day(s)" if english else f"{i['days_left']} Tag(e)")
+                 for i in result["invoices"]]
+        head = (f"Early-payment discounts ending in the next 14 days (total {money(result['total_saving_eur'])}):"
+                if english else f"Skonto, das in den nächsten 14 Tagen endet (zusammen {money(result['total_saving_eur'])}):")
         text = head + "\n" + ("\n".join(lines) or ("- none" if english else "- keines"))
     elif invoice and any(w in lowered for w in ("korrektur", "correction", "berichtigung", "e-mail", "email")):
         result = call("draft_correction_request", invoice_id=invoice["id"])

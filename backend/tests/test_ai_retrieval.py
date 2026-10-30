@@ -12,6 +12,8 @@ from services.ai.retrieval import Index, Passage, default_index, tokenize
     ("Wann muss ich Bauabzugsteuer einbehalten?", "§ 48"),
     ("Was gilt für die Freistellungsbescheinigung?", "§ 48b"),
     ("Is an e-invoice the same as a PDF?", "§ 14 Abs. 1 UStG"),
+    ("Muss bei Bauleistungen der Empfänger die Umsatzsteuer zahlen?", "§ 13b"),
+    ("Does the recipient owe the VAT for construction work?", "§ 13b"),
 ])
 def test_relevant_paragraph_is_in_top_3(question, expected):
     citations = [p.citation for p in default_index().search(question, 3)]
