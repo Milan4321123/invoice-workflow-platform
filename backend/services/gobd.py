@@ -1,7 +1,7 @@
 """
 GoBD rules for invoices as accounting records (Buchungsbelege).
 
-The GoBD (BMF letter of 28.11.2019, amended 2024 for e-invoices) require that
+The GoBD (BMF letter of 28.11.2019, since amended for e-invoices) require that
 records stay complete and unaltered for the retention period, and that every
 change remains traceable (Rz. 58 ff., "Unveränderbarkeit"). In practice:
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Fictional ZUGFeRD 2.3 / Factur-X EN 16931 invoice in CII syntax, used by demo mode -->
+<!-- Fictional ZUGFeRD 2.x / Factur-X 1.x, EN 16931 profile, invoice in CII syntax, used by demo mode -->
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
                           xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100"
                           xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
