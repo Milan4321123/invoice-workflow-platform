@@ -319,6 +319,21 @@ CREATE TRIGGER invoice_audit_log_no_truncate
   FOR EACH STATEMENT EXECUTE FUNCTION public.reject_audit_log_change();
 
 
+-- AI usage log (see database/migrations/007_ai_requests.sql)
+CREATE TABLE IF NOT EXISTS public.ai_requests (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  feature VARCHAR(40) NOT NULL,
+  model VARCHAR(60) NOT NULL,
+  actor VARCHAR(255),
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  cost_usd NUMERIC(12, 6) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_requests_created_at ON public.ai_requests (created_at DESC);
+
+
 -- =====================================================================
 -- 9. STORAGE BUCKETS (private: PDFs are only served via signed URLs)
 -- =====================================================================
@@ -376,6 +391,7 @@ ALTER TABLE gewerk_list ENABLE ROW LEVEL SECURITY;
 ALTER TABLE security_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE skonto_scheduler_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoice_audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_requests ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================================
 -- SETUP COMPLETE!

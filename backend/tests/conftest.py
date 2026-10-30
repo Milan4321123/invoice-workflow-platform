@@ -19,6 +19,10 @@ _TEST_ENV = {
     "ACCOUNTING_EMAIL": "buchhaltung@example.com",
     "SKONTO_SCHEDULER_ENABLED": "false",
     "NODE_ENV": "test",
+    # Never call the real AI provider from tests, even with a key in the shell
+    "ANTHROPIC_API_KEY": "",
+    "ANTHROPIC_AUTH_TOKEN": "",
+    "AI_FEATURES_ENABLED": "false",
 }
 os.environ.update(_TEST_ENV)
 

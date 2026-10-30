@@ -39,6 +39,10 @@ class _Query:
         self.filters.append(lambda row: str(row.get(column) or "").lower() == wanted)
         return self
 
+    def gte(self, column, value):
+        self.filters.append(lambda row: row.get(column) is not None and row.get(column) >= value)
+        return self
+
     def lt(self, column, value):
         self.filters.append(lambda row: row.get(column) is not None and row.get(column) < value)
         return self
