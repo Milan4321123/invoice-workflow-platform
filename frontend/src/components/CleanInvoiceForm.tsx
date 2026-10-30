@@ -5,6 +5,8 @@ import { SearchableDropdown } from './SearchableDropdown';
 import { dropdownService, DropdownOption } from '@/services/dropdown';
 import { getApiUrl } from '@/config/api';
 import { authFetch } from '@/lib/authFetch';
+import TaxDetailsSection from './compliance/TaxDetailsSection';
+import ComplianceChecklist from './compliance/ComplianceChecklist';
 
 // German invoice field types
 export interface GermanInvoiceFields {
@@ -21,6 +23,18 @@ export interface GermanInvoiceFields {
   kfw_anrechenbar?: boolean;
   rechnungspruefung_email?: string;
   weiter_berechnen_an?: string;
+  // §14 Abs. 4 UStG, §13b UStG, §48b EStG
+  rechnungsnummer?: string;
+  rechnungsdatum?: string;
+  leistungsdatum?: string;
+  nettobetrag?: number | '';
+  ust_satz?: number | '';
+  ust_betrag?: number | '';
+  lieferant_ust_id?: string;
+  lieferant_steuernummer?: string;
+  lieferant_iban?: string;
+  reverse_charge_13b?: boolean;
+  freistellung_48b_gueltig_bis?: string;
 }
 
 // Change tracking interfaces
@@ -33,6 +47,7 @@ interface PendingChange {
 }
 
 interface CleanInvoiceFormProps {
+  invoiceId?: string;
   fields: GermanInvoiceFields;
   onFieldChange: (fieldName: string, value: any) => void;
   onSave: () => void;
@@ -43,6 +58,7 @@ interface CleanInvoiceFormProps {
 }
 
 const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
+  invoiceId,
   fields,
   onFieldChange,
   onSave,
@@ -771,6 +787,9 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
             </div>
           </div>
         </div>
+
+        <TaxDetailsSection fields={fields} onFieldChange={onFieldChange} />
+        {invoiceId && <ComplianceChecklist invoiceId={invoiceId} fields={fields} />}
 
         {/* Discard Changes Option */}
         {pendingChanges.length > 0 && (

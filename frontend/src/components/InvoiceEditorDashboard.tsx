@@ -297,6 +297,7 @@ export default function InvoiceEditorDashboard({
         <div className={`lg:flex-1 lg:w-1/2 ${mobileView === 'form' ? 'flex' : 'hidden lg:flex'} flex-col bg-white`}>
           <div className="flex-1 h-full overflow-hidden">
             <CleanInvoiceForm
+              invoiceId={invoiceId}
               fields={fields}
               onFieldChange={(fieldName: string, value: any) => handleFieldChange(fieldName as keyof GermanInvoiceFields, value)}
               onSave={() => handleSave(fields)}
