@@ -8,8 +8,6 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: 'Rechnungsverwaltungssystem',
   description: 'PDF-Rechnungen hochladen und verwalten mit durchsuchbaren Dropdown-Menüs und Workflow-Automatisierung',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
-  themeColor: '#667eea',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -18,13 +16,20 @@ export const metadata = {
   },
 }
 
+// Users must be able to zoom (WCAG 1.4.4), so no maximum-scale or user-scalable=no
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#667eea',
+}
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="de">
       <body className={inter.className}>
         <ClientWrapper>
           {children}
