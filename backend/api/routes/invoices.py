@@ -10,7 +10,7 @@ from services.database import db_service
 from services.dropdown_labels import with_labels
 from services.email_service import email_service
 from api.dependencies.auth import require_auth
-from services.invoice_compliance import ERROR, Finding, check_invoice, summarize
+from services.invoice_compliance import check_stored_invoice, summarize
 from services.gobd import LOCKED_STATUSES, retention_until
 
 router = APIRouter()
@@ -337,18 +337,8 @@ async def check_invoice_compliance(
     if not result["success"]:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    invoice = {**result["data"], **(fields or {})}
-    findings = check_invoice(invoice)
-
-    supplier, number = invoice.get("rechnungssteller"), invoice.get("rechnungsnummer")
-    if supplier and number:
-        duplicates = db_service.find_same_invoice_number(supplier, number, exclude_id=invoice_id)
-        for other in duplicates.get("data", []):
-            findings.insert(0, Finding(
-                "duplicate_invoice_number", ERROR, "rechnungsnummer",
-                f"Rechnungsnummer {number} von {supplier} ist bereits erfasst "
-                f"({other.get('file_name')}). Doppelte Zahlung vermeiden.",
-            ))
+    invoice = {**result["data"], **(fields or {}), "id": invoice_id}
+    findings = check_stored_invoice(invoice, db_service)
 
     return {"invoice_id": invoice_id, **summarize(findings)}
 

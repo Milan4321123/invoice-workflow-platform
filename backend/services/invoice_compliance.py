@@ -259,3 +259,21 @@ def summarize(findings: List[Finding]) -> Dict[str, Any]:
         "warning_count": sum(f.severity == WARNING for f in findings),
         "findings": [asdict(f) for f in findings],
     }
+
+
+def check_stored_invoice(invoice: Dict[str, Any], db: Any) -> List[Finding]:
+    """
+    check_invoice plus the one rule that needs the database: the same
+    invoice number from the same supplier already recorded (double payment).
+    """
+    findings = check_invoice(invoice)
+    supplier, number = invoice.get("rechnungssteller"), invoice.get("rechnungsnummer")
+    if supplier and number and invoice.get("id"):
+        duplicates = db.find_same_invoice_number(supplier, number, exclude_id=invoice["id"])
+        for other in duplicates.get("data", []):
+            findings.insert(0, Finding(
+                "duplicate_invoice_number", ERROR, "rechnungsnummer",
+                f"Rechnungsnummer {number} von {supplier} ist bereits erfasst "
+                f"({other.get('file_name')}). Doppelte Zahlung vermeiden.",
+            ))
+    return findings
