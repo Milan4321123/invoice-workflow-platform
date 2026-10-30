@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
+const PUBLIC_PATHS = ['/impressum', '/datenschutz'];
+
 interface User {
   id: string;
   username: string;
@@ -77,10 +79,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Simplified redirect logic - only redirect if needed
   useEffect(() => {
     const isLoginPage = pathname === '/login';
+    // Impressum and privacy notice must be reachable without logging in
+    const isPublicPage = isLoginPage || PUBLIC_PATHS.includes(pathname ?? '');
     
     // Add a small delay to prevent race conditions during navigation
     const timer = setTimeout(() => {
-      if (!isAuthenticated && !isLoginPage) {
+      if (!isAuthenticated && !isPublicPage) {
         console.log('🔄 Redirecting to login - not authenticated');
         router.replace('/login');
       } else if (isAuthenticated && isLoginPage) {

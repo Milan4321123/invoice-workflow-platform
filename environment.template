@@ -83,3 +83,18 @@ NODE_ENV=development
 # 7. Start with: ./start-company.sh or start-company.bat
 
 # THAT'S IT! Docker handles everything else automatically.
+# =====================================================================
+# LEGAL PAGES (Impressum §5 DDG, Datenschutzhinweise Art. 13 DSGVO)
+# =====================================================================
+NEXT_PUBLIC_COMPANY_NAME=Muster Bau GmbH
+NEXT_PUBLIC_COMPANY_STREET=Musterstraße 1
+NEXT_PUBLIC_COMPANY_CITY=12345 Musterstadt
+NEXT_PUBLIC_COMPANY_REPRESENTATIVE=Max Mustermann (Geschäftsführer)
+NEXT_PUBLIC_COMPANY_REGISTER=Amtsgericht Musterstadt, HRB 12345
+NEXT_PUBLIC_COMPANY_VAT_ID=DE123456788
+NEXT_PUBLIC_COMPANY_EMAIL=kontakt@muster-bau.example
+NEXT_PUBLIC_COMPANY_PHONE=+49 30 1234567
+NEXT_PUBLIC_PRIVACY_CONTACT=datenschutz@muster-bau.example
+
+# Days until IP addresses from approval links are removed (DSGVO storage limitation)
+IP_RETENTION_DAYS=30

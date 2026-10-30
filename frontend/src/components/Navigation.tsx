@@ -18,7 +18,8 @@ import {
   LogOut,
   User,
   Bell,
-  Settings
+  Settings,
+  ShieldCheck
 } from 'lucide-react';
 
 const Navigation = () => {
@@ -42,6 +43,7 @@ const Navigation = () => {
     { href: '/dashboard/folder-watcher', label: 'Ordnerüberwachung', icon: FolderOpen },
     { href: '/prufbericht', label: 'Prüfbericht', icon: BarChart3 },
     { href: '/health', label: 'Systemstatus', icon: Activity },
+    { href: '/datenschutz-anfragen', label: 'Datenschutz', icon: ShieldCheck },
   ];
 
   const isActiveRoute = (href: string) => {

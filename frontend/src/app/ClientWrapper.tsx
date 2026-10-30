@@ -4,6 +4,7 @@ import React from 'react'
 import { usePathname } from 'next/navigation'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import Navigation from '@/components/Navigation'
+import LegalFooter from '@/components/LegalFooter'
 
 interface ClientWrapperProps {
   children: React.ReactNode
@@ -28,6 +29,7 @@ function AppContent({ children }: ClientWrapperProps) {
       <main className={`relative z-10 ${showNavigation ? 'pt-16' : ''}`}>
         {children}
       </main>
+      <LegalFooter />
     </div>
   )
 }
