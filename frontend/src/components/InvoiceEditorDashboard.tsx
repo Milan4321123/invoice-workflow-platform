@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '@/config/api';
 import PDFViewer from './PDFViewerClean';
 import CleanInvoiceForm, { GermanInvoiceFields } from './CleanInvoiceForm';
-import { FileText, Eye, Edit3, AlertTriangle, CheckCircle, Monitor, FileInput } from 'lucide-react';
+import { FileText, Eye, Edit3, AlertTriangle, CheckCircle, Monitor, FileInput, FileCode2, BadgeCheck } from 'lucide-react';
 import { authFetch } from '@/lib/authFetch';
 
 interface InvoiceEditorDashboardProps {
@@ -23,6 +23,8 @@ export default function InvoiceEditorDashboard({
   const [pdfUrl, setPdfUrl] = useState<string>(initialData?.pdfUrl || '');
   const [fields, setFields] = useState<GermanInvoiceFields>(initialData?.fields || {});
   const [filename, setFilename] = useState<string>(initialData?.filename || '');
+  const [mimeType, setMimeType] = useState<string | null>(null);
+  const [eRechnungFormat, setERechnungFormat] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(!initialData);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
@@ -54,6 +56,8 @@ export default function InvoiceEditorDashboard({
       setPdfUrl(data.pdfUrl);
       setFields(data.fields || {});
       setFilename(data.filename || `Rechnung ${invoiceId}`);
+      setMimeType(data.mimeType || null);
+      setERechnungFormat(data.eRechnungFormat || null);
     } catch (err) {
       console.error('Error loading invoice data:', err);
       setError(err instanceof Error ? err.message : 'Rechnungsdaten konnten nicht geladen werden');
@@ -275,7 +279,18 @@ export default function InvoiceEditorDashboard({
         {/* PDF Viewer - Full Height, Clean Display */}
         <div className={`lg:flex-1 lg:w-1/2 ${mobileView === 'pdf' ? 'flex' : 'hidden lg:flex'} flex-col bg-gray-900`}>
           <div className="flex-1 h-full">
-            {pdfUrl ? (
+            {mimeType === 'application/xml' ? (
+              <div className="flex items-center justify-center h-full bg-gray-800 p-8">
+                <div className="text-center text-gray-300 max-w-sm">
+                  <FileCode2 className="h-16 w-16 mx-auto mb-4 text-gray-400" aria-hidden="true" />
+                  <p className="text-lg font-medium text-white">E-Rechnung ohne Bilddarstellung</p>
+                  <p className="text-sm mt-2">
+                    Eine XRechnung besteht nur aus strukturierten Daten. Alle Angaben wurden aus dem XML
+                    übernommen und stehen im Formular; die Originaldatei bleibt unverändert archiviert.
+                  </p>
+                </div>
+              </div>
+            ) : pdfUrl ? (
               <PDFViewer
                 pdfUrl={pdfUrl}
                 onLoadSuccess={handlePdfLoadSuccess}
@@ -295,6 +310,16 @@ export default function InvoiceEditorDashboard({
 
         {/* Form Section - Clean, Focused Editing */}
         <div className={`lg:flex-1 lg:w-1/2 ${mobileView === 'form' ? 'flex' : 'hidden lg:flex'} flex-col bg-white`}>
+          {eRechnungFormat && (
+            <div className="flex items-start gap-3 border-b border-green-200 bg-green-50 px-6 py-3 text-sm text-green-800">
+              <BadgeCheck className="h-5 w-5 shrink-0 mt-0.5" aria-hidden="true" />
+              <p>
+                <span className="font-semibold">E-Rechnung: {eRechnungFormat}.</span>{' '}
+                Die Felder stammen aus dem XML, das bei Abweichungen vom PDF maßgeblich ist. Bitte nur Projekt,
+                Gewerk und Prüfer ergänzen.
+              </p>
+            </div>
+          )}
           <div className="flex-1 h-full overflow-hidden">
             <CleanInvoiceForm
               invoiceId={invoiceId}

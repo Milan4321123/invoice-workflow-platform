@@ -21,7 +21,13 @@ interface UploadResponse {
   filename: string;
   file_size: number;
   message: string;
+  e_invoice_format?: string | null;
 }
+
+// Same rule the backend applies after sanitizing (which turns umlauts into "_"):
+// EINGANGSDATUM_PROJEKT_GEWERK_LIEFERANT, as PDF or XRechnung XML
+const FILENAME_PATTERN = /^\d{8}_[A-Za-z0-9][A-Za-z0-9.-]*_[A-Za-z0-9][A-Za-z0-9.-]*_[A-Za-z0-9][A-Za-z0-9.-]*\.(pdf|xml)$/;
+const isXml = (file: File) => file.name.toLowerCase().endsWith('.xml');
 
 export default function Dropzone({ onUploadComplete, onUploadStart, onUploadError }: DropzoneProps) {
   const [status, setStatus] = useState<UploadStatus>("idle");
@@ -29,10 +35,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadedFile, setUploadedFile] = useState<UploadResponse | null>(null);
   
-  const validateFilename = (filename: string): boolean => {
-    const regex = /^\d{8}_[A-Z0-9]+_[A-Za-z]+_[A-Za-z]+\.pdf$/;
-    return regex.test(filename);
-  };
+  const validateFilename = (filename: string): boolean => FILENAME_PATTERN.test(filename);
   
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -45,7 +48,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
   const onDrop = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
     
-    const pdf = files[0];
+    const file = files[0];
     
     // Reset previous state
     setErrorMessage("");
@@ -53,8 +56,8 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
     setUploadProgress(0);
     
     // Validate file type
-    if (pdf.type !== "application/pdf") {
-      const errorMsg = "Nur PDF-Dateien sind erlaubt";
+    if (file.type !== "application/pdf" && !isXml(file)) {
+      const errorMsg = "Nur PDF-Dateien oder E-Rechnungen (XRechnung-XML) sind erlaubt";
       setErrorMessage(errorMsg);
       setStatus("error");
       toast.error(errorMsg);
@@ -63,8 +66,8 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
     }
     
     // Validate filename format
-    if (!validateFilename(pdf.name)) {
-      const errorMsg = "Dateiname muss dem Muster folgen: JJJJMMTT_KENNUNG_LIEFERANT_TYP.pdf";
+    if (!validateFilename(file.name)) {
+      const errorMsg = "Dateiname muss dem Muster folgen: JJJJMMTT_PROJEKT_GEWERK_LIEFERANT.pdf (oder .xml)";
       setErrorMessage(errorMsg);
       setStatus("error");
       toast.error("Ungültiges Dateinamen-Format");
@@ -88,13 +91,15 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
       }, 200);
       
       // Use authenticated API client instead of direct fetch
-      const data: UploadResponse = await api.uploadFile(pdf);
+      const data: UploadResponse = await api.uploadFile(file);
       
       clearInterval(progressInterval);
       setUploadProgress(100);
       setStatus("success");
       setUploadedFile(data);
-      toast.success("Datei erfolgreich hochgeladen!");
+      toast.success(data.e_invoice_format
+        ? `E-Rechnung erkannt (${data.e_invoice_format}): Felder wurden automatisch ausgefüllt`
+        : "Datei erfolgreich hochgeladen!");
       
       if (onUploadComplete) {
         onUploadComplete(data);
@@ -113,7 +118,9 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
     accept: {
-      'application/pdf': ['.pdf']
+      'application/pdf': ['.pdf'],
+      'application/xml': ['.xml'],
+      'text/xml': ['.xml'],
     },
     maxFiles: 1,
     multiple: false
@@ -168,6 +175,9 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
                 <p className="flex justify-between"><strong>Datei:</strong> <span className="font-mono">{uploadedFile.filename}</span></p>
                 <p className="flex justify-between"><strong>Größe:</strong> <span className="font-mono">{formatFileSize(uploadedFile.file_size)}</span></p>
                 <p className="flex justify-between"><strong>Status:</strong> <span className="font-mono text-green-600">{uploadedFile.status}</span></p>
+                {uploadedFile.e_invoice_format && (
+                  <p className="flex justify-between"><strong>E-Rechnung:</strong> <span className="font-mono text-green-600">{uploadedFile.e_invoice_format}</span></p>
+                )}
               </div>
             )}
             <button 
@@ -207,14 +217,17 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
               </svg>
             </div>
             <p className="text-xl font-medium mb-2 gradient-text">
-              {isDragActive ? 'PDF-Datei hier ablegen' : 'PDF-Datei per Drag & Drop hier ablegen'}
+              {isDragActive ? 'Rechnung hier ablegen' : 'Rechnung (PDF oder XRechnung) per Drag & Drop hier ablegen'}
             </p>
             <p className="text-sm text-gray-500 mb-6">oder klicken Sie, um eine Datei auszuwählen</p>
             <div className="text-sm text-gray-700 glass-card rounded-xl p-4 max-w-md mx-auto border border-purple-200 shadow-lg">
               <p className="font-medium mb-2 gradient-text">📋 Dateinamen-Anforderungen:</p>
-              <p className="font-mono text-purple-700 mb-1">JJJJMMTT_KENNUNG_LIEFERANT_TYP.pdf</p>
+              <p className="font-mono text-purple-700 mb-1">JJJJMMTT_PROJEKT_GEWERK_LIEFERANT.pdf</p>
               <p className="text-xs text-gray-600 mt-2">
-                <span className="font-medium">Beispiel:</span> 20250528_INV001_ACME_SERVICE.pdf
+                <span className="font-medium">Beispiel:</span> 20250704_OMEGA_ELEKTRO_Mueller.pdf
+              </p>
+              <p className="text-xs text-gray-600 mt-2">
+                E-Rechnungen (ZUGFeRD, Factur-X, XRechnung) werden erkannt und die Felder automatisch ausgefüllt.
               </p>
             </div>
           </div>

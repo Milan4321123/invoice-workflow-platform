@@ -32,6 +32,7 @@ interface CleanInvoice {
   status: 'pending' | 'uploaded' | 'edited' | 'pending_email' | 'edit_completed' | 'in_review_by_bauleiter' | 'approved_by_bauleiter' | 'rejected_by_bauleiter' | 'completed' | 'error'
   file_size: number
   created_at: string
+  e_rechnung_format?: string | null
   
   // Manual Review Status
   review_status?: 'pending' | 'under_review' | 'completed_review' | 'needs_attention'
@@ -747,6 +748,14 @@ export default function CleanInvoiceDashboard() {
                             <div className="text-sm text-gray-600">
                               {formatFileSize(invoice.file_size)}
                             </div>
+                            {invoice.e_rechnung_format && (
+                              <span
+                                className="mt-1 inline-block rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800"
+                                title={invoice.e_rechnung_format}
+                              >
+                                E-Rechnung
+                              </span>
+                            )}
                             <div className="text-xs text-gray-500">
                               {new Date(invoice.created_at).toLocaleDateString('de-DE', {
                                 year: 'numeric',
