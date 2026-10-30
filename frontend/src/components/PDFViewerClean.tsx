@@ -18,9 +18,10 @@ import {
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-// Set up PDF.js worker - using version compatible with our downgraded PDF.js
+// PDF.js worker, bundled and served from our own origin. Loading it from a CDN
+// would send every user's IP address to a third party without consent (DSGVO).
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).toString();
 }
 
 interface PDFViewerProps {
