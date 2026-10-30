@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS public.invoices_clean (
   lieferant_iban VARCHAR(34),
   reverse_charge_13b BOOLEAN NOT NULL DEFAULT false,
   freistellung_48b_gueltig_bis DATE,
+  e_rechnung_format VARCHAR(60), -- see database/migrations/005_e_rechnung_format.sql
   CONSTRAINT invoices_clean_pkey PRIMARY KEY (id),
   CONSTRAINT check_approval_status CHECK (
     (approval_status)::text = ANY (

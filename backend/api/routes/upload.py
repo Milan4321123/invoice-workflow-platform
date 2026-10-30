@@ -3,11 +3,9 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from fastapi.responses import Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-import re
 import uuid
 import datetime
 import logging
-import os
 from typing import Dict, Any
 
 # Import upload service instead of direct database calls
@@ -18,37 +16,6 @@ from api.dependencies.auth import require_auth
 router = APIRouter()
 logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
-
-# Filename pattern validation
-FILENAME_PATTERN = r'^\d{8}_[A-Za-z0-9]+_[A-Za-z0-9]+_[A-Za-z0-9]+\.pdf$'
-
-def sanitize_filename(filename: str) -> str:
-    """
-    Sanitize filename to prevent path traversal and XSS attacks
-    """
-    if not filename:
-        return "unknown.pdf"
-    
-    # Remove path traversal attempts
-    filename = os.path.basename(filename)
-    
-    # Remove or replace dangerous characters
-    # Keep only alphanumeric, dots, dashes, underscores
-    filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
-    
-    # Remove multiple dots that could be used for traversal
-    filename = re.sub(r'\.{2,}', '.', filename)
-    
-    # Ensure it ends with .pdf
-    if not filename.lower().endswith('.pdf'):
-        filename = filename + '.pdf'
-    
-    # Limit length
-    if len(filename) > 255:
-        name_part = filename[:-4][:250]  # Leave room for .pdf
-        filename = name_part + '.pdf'
-    
-    return filename
 
 @router.get("/mock-storage/{filename}")
 async def get_mock_file(filename: str):
@@ -91,21 +58,16 @@ async def upload_file(
     file: UploadFile = File(...),
     current_user: Dict[str, Any] = Depends(require_auth)
 ):
-    """Upload a PDF invoice file using the centralized upload service"""
-    # Validate file type
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-    
-    # Sanitize filename for security
-    safe_filename = sanitize_filename(file.filename)
-    
-    # Validate filename pattern (use sanitized filename)
-    if not re.match(FILENAME_PATTERN, safe_filename):
-        raise HTTPException(
-            status_code=400, 
-            detail="Filename must follow pattern: YYYYMMDD_IDENTIFIER_VENDOR_TYPE.pdf"
-        )
-    
+    """
+    Upload an invoice: a PDF (scan or ZUGFeRD/Factur-X) or an XRechnung XML.
+    The upload service checks type, name and duplicates.
+    """
+    # Browsers label .xml files inconsistently; the parser decides whether it's an invoice
+    content_type = file.content_type
+    if (file.filename or "").lower().endswith(".xml") and content_type in (
+            None, "", "application/octet-stream", "text/xml", "application/xml"):
+        content_type = "application/xml"
+
     try:
         # Read file content
         content = await file.read()
@@ -122,8 +84,8 @@ async def upload_file(
         # Create FileData object
         file_data = FileData(
             content=content,
-            filename=safe_filename,
-            content_type=file.content_type,
+            filename=file.filename,
+            content_type=content_type,
             file_size=len(content),
             source=UploadSource.DRAG_DROP,
             source_metadata={"original_filename": file.filename}
@@ -133,6 +95,8 @@ async def upload_file(
         result = await upload_service.upload_file(file_data)
         
         if not result.success:
+            if result.rejected:
+                raise HTTPException(status_code=400, detail=result.error)
             raise HTTPException(status_code=500, detail=f"Upload failed: {result.error}")
         
         # Return successful response
@@ -142,7 +106,8 @@ async def upload_file(
             "url": result.url,
             "id": result.invoice_id,
             "file_size": result.file_size,
-            "source": result.source.value
+            "source": result.source.value,
+            "e_invoice_format": result.e_invoice_format
         }
         
     except HTTPException:

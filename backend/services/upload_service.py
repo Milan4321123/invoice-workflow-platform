@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from services.database import db_service
+from services.e_invoice import EInvoice, EInvoiceError, parse_pdf, parse_xml
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,8 @@ class UploadResult:
     error: Optional[str] = None
     source: Optional[UploadSource] = None
     storage_path: Optional[str] = None
+    e_invoice_format: Optional[str] = None
+    rejected: bool = False  # the file itself is not acceptable (400), as opposed to a server error
 
 @dataclass
 class FileData:
@@ -55,10 +58,11 @@ class UploadService:
     # - LIEFERANT: Supplier name (letters, numbers, hyphens, periods)
     # Must be exactly 4 parts separated by underscores
     # Supports German characters (ä, ö, ü, ß) and international characters
-    FILENAME_PATTERN = r'^\d{8}_[A-Za-z0-9äöüÄÖÜß][A-Za-z0-9äöüÄÖÜß.\-]*_[A-Za-z0-9äöüÄÖÜß][A-Za-z0-9äöüÄÖÜß.\-]*_[A-Za-z0-9äöüÄÖÜß][A-Za-z0-9äöüÄÖÜß.\-]*\.pdf$'
+    FILENAME_PATTERN = r'^\d{8}_[A-Za-z0-9äöüÄÖÜß][A-Za-z0-9äöüÄÖÜß.\-]*_[A-Za-z0-9äöüÄÖÜß][A-Za-z0-9äöüÄÖÜß.\-]*_[A-Za-z0-9äöüÄÖÜß][A-Za-z0-9äöüÄÖÜß.\-]*\.(pdf|xml)$'
     
-    # Supported content types
-    SUPPORTED_CONTENT_TYPES = {"application/pdf"}
+    # PDF (scan or ZUGFeRD/Factur-X) or bare XML (XRechnung)
+    SUPPORTED_CONTENT_TYPES = {"application/pdf", "application/xml", "text/xml"}
+    XML_CONTENT_TYPES = {"application/xml", "text/xml"}
     
     # Max file size (10MB)
     MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -88,14 +92,14 @@ class UploadService:
         # Remove multiple dots that could be used for traversal
         filename = re.sub(r'\.{2,}', '.', filename)
         
-        # Ensure it ends with .pdf
-        if not filename.lower().endswith('.pdf'):
+        # Keep .pdf or .xml (e-invoice), anything else becomes .pdf
+        if not filename.lower().endswith(('.pdf', '.xml')):
             filename = filename + '.pdf'
         
         # Limit length
         if len(filename) > 255:
-            name_part = filename[:-4][:250]  # Leave room for .pdf
-            filename = name_part + '.pdf'
+            name_part, extension = filename[:-4][:250], filename[-4:]
+            filename = name_part + extension
         
         return filename
     
@@ -112,20 +116,20 @@ class UploadService:
             return False, f"Datei ist zu groß. Maximum: {self.MAX_FILE_SIZE // (1024*1024)}MB"
         
         if file_data.content_type not in self.SUPPORTED_CONTENT_TYPES:
-            return False, "Nur PDF-Dateien sind erlaubt"
+            return False, "Nur PDF-Dateien oder E-Rechnungen (XML) sind erlaubt"
         
         # Step 2: Enhanced filename pattern validation
         if not re.match(self.FILENAME_PATTERN, file_data.filename):
             if file_data.source == UploadSource.FOLDER_WATCHER:
                 return False, f"❌ Dateiname '{file_data.filename}' entspricht nicht dem erforderlichen Muster:\n" \
-                             f"   Format: EINGANGSDATUM_PROJEKT_GEWERK_LIEFERANT.pdf\n" \
+                             f"   Format: EINGANGSDATUM_PROJEKT_GEWERK_LIEFERANT.pdf (oder .xml)\n" \
                              f"   Beispiel: 20250704_OMEGA_ELEKTRO_Mueller.pdf\n" \
                              f"   - EINGANGSDATUM: 8 Ziffern (JJJJMMTT)\n" \
                              f"   - PROJEKT: Projektname ohne Unterstriche\n" \
                              f"   - GEWERK: Gewerkebezeichnung\n" \
                              f"   - LIEFERANT: Lieferantenname"
             else:
-                return False, "Dateiname muss dem Muster folgen: EINGANGSDATUM_PROJEKT_GEWERK_LIEFERANT.pdf"
+                return False, "Dateiname muss dem Muster folgen: EINGANGSDATUM_PROJEKT_GEWERK_LIEFERANT.pdf (oder .xml)"
         
         # Step 3: Enhanced duplicate checking for folder watcher
         if file_data.source == UploadSource.FOLDER_WATCHER and db_service.is_available:
@@ -182,6 +186,24 @@ class UploadService:
         
         return True, None
     
+    def read_e_invoice(self, file_data: FileData) -> Tuple[Optional[EInvoice], Optional[str]]:
+        """
+        Structured invoice data, if the file carries any. Returns (e_invoice, error).
+        A bare XML upload must be a readable e-invoice; a PDF without embedded
+        XML is an ordinary scanned invoice.
+        """
+        if file_data.content_type in self.XML_CONTENT_TYPES:
+            try:
+                return parse_xml(file_data.content), None
+            except EInvoiceError as e:
+                return None, f"Keine lesbare E-Rechnung: {e}"
+        try:
+            return parse_pdf(file_data.content), None
+        except EInvoiceError as e:
+            # The PDF itself is still a valid invoice copy; fields are entered by hand
+            logger.warning(f"Embedded invoice XML in {file_data.filename} is unreadable: {e}")
+            return None, None
+
     def generate_storage_path(self, filename: str, source: UploadSource) -> str:
         """
         Generate storage path based on source and filename
@@ -221,7 +243,8 @@ class UploadService:
             return False, None, str(e)
     
     def create_invoice_record(self, file_data: FileData, storage_path: str, 
-                            public_url: str, invoice_id: str) -> Tuple[bool, Optional[str]]:
+                            public_url: str, invoice_id: str,
+                            e_invoice: Optional[EInvoice] = None) -> Tuple[bool, Optional[str]]:
         """
         Create invoice record in database (clean, no OCR dependencies)
         Returns (success, error_message)
@@ -238,6 +261,10 @@ class UploadService:
                 # Note: upload_source removed as column doesn't exist in current schema
                 # created_at and updated_at will be auto-generated by database default
             }
+            if e_invoice:
+                # Values from the XML are exact; the editor still shows them for review
+                invoice_data.update(e_invoice.invoice_fields())
+                invoice_data["e_rechnung_format"] = e_invoice.format
             # Create invoice record in database using clean database service
             if db_service.is_available:
                 logger.info(f"🔍 Database available, creating invoice record for {invoice_id}")
@@ -321,9 +348,15 @@ class UploadService:
                 return UploadResult(
                     success=False,
                     error=validation_error,
-                    source=file_data.source
+                    source=file_data.source,
+                    rejected=True
                 )
             
+            # Step 2b: Read structured data from XRechnung / ZUGFeRD
+            e_invoice, e_invoice_error = self.read_e_invoice(file_data)
+            if e_invoice_error:
+                return UploadResult(success=False, error=e_invoice_error, source=file_data.source, rejected=True)
+
             # Step 3: Generate storage path
             storage_path = self.generate_storage_path(safe_filename, file_data.source)
             
@@ -341,7 +374,7 @@ class UploadService:
             
             # Step 6: Create database record
             db_success, db_error = self.create_invoice_record(
-                file_data, storage_path, public_url, invoice_id
+                file_data, storage_path, public_url, invoice_id, e_invoice
             )
             if not db_success:
                 # Log error but don't fail the upload completely
@@ -355,7 +388,8 @@ class UploadService:
                 url=public_url,
                 file_size=file_data.file_size,
                 source=file_data.source,
-                storage_path=storage_path
+                storage_path=storage_path,
+                e_invoice_format=e_invoice.format if e_invoice else None
             )
             
         except Exception as e:

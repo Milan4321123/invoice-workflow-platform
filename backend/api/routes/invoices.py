@@ -388,7 +388,9 @@ async def get_invoice_editor_data(invoice_id: str = Path(..., description="The i
                 "weiter_berechnen_an": invoice_data.get("weiter_berechnen_an", ""),
                 **{field: invoice_data.get(field) for field in TAX_FIELDS},
             },
-            "filename": invoice_data.get("file_name", f"Invoice {invoice_id}")
+            "filename": invoice_data.get("file_name", f"Invoice {invoice_id}"),
+            "mimeType": invoice_data.get("mime_type"),
+            "eRechnungFormat": invoice_data.get("e_rechnung_format"),
         }
         
         return editor_data

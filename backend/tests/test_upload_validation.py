@@ -16,6 +16,8 @@ def make_file(filename="20250704_OMEGA_ELEKTRO_Mueller.pdf", size=1024, content_
     ("rechnung<script>.pdf", "rechnung_script_.pdf"),
     ("a..b.pdf", "a.b.pdf"),
     ("", "unknown.pdf"),
+    ("20261015_A_B_C.xml", "20261015_A_B_C.xml"),
+    ("rechnung.exe", "rechnung.exe.pdf"),
 ])
 def test_sanitize_filename(raw, expected):
     assert service.sanitize_filename(raw) == expected
