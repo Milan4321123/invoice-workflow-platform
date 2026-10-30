@@ -30,6 +30,8 @@ if DEMO_MODE:
         "ADMIN_FULL_NAME": "Demo-Benutzer",
         "ACCOUNTING_EMAIL": "buchhaltung@muster-bau.example",
         "EMAIL_DEMO_MODE": "true",
+        # AI features are on; without an ANTHROPIC_API_KEY they run in offline mode
+        "AI_FEATURES_ENABLED": "true",
         "SENDGRID_API_KEY": "",
         "JWT_SECRET": secrets.token_urlsafe(48),
     })
@@ -211,6 +213,7 @@ from api.routes import (
     skonto_dashboard,  # Added missing skonto dashboard import
     gobd,
     privacy,
+    ai,
     # multi_layer_approval,  # Removed - using simple single Bauleiter approval only
     auth
 )
@@ -236,6 +239,7 @@ app.include_router(skonto_dashboard.router, prefix="/api", tags=["skonto"], depe
 app.include_router(folder_watcher.router, prefix="/api/folder-watcher", tags=["folder-watcher"], dependencies=logged_in)
 app.include_router(gobd.router, prefix="/api", tags=["gobd"], dependencies=logged_in)
 app.include_router(privacy.router, prefix="/api", tags=["privacy"], dependencies=logged_in)
+app.include_router(ai.router, prefix="/api", tags=["ai"], dependencies=logged_in)
 if DEMO_MODE:
     from api.routes import demo
     app.include_router(demo.router, prefix="/api", tags=["demo"])
