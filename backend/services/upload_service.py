@@ -269,7 +269,6 @@ class UploadService:
             if db_service.is_available:
                 logger.info(f"🔍 Database available, creating invoice record for {invoice_id}")
                 create_result = db_service.create_invoice(invoice_data)
-                logger.info(f"🔍 Database create result: {create_result}")
                 
                 if not create_result.get("success"):
                     error_msg = create_result.get("error", "Unknown database error")

@@ -91,6 +91,10 @@ class QuietPathsFilter(logging.Filter):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Mask e-mail addresses and IBANs in every log line (DSGVO data minimisation)
+from services import log_redaction
+log_redaction.install()
+
 # Apply quiet filter to uvicorn access logs
 uvicorn_logger = logging.getLogger("uvicorn.access")
 uvicorn_logger.addFilter(QuietPathsFilter())
@@ -222,6 +226,7 @@ async def root():
 async def startup_event():
     """Initialize application on startup"""
     logger.info("🚀 Starting Invoice Management API...")
+    log_redaction.install()  # uvicorn sets up its handlers after main.py is imported
     
     # Validate environment variables
     if not validate_environment():

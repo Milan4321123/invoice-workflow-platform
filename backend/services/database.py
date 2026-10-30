@@ -164,8 +164,6 @@ class DatabaseService:
             return {"success": False, "error": "Database unavailable"}
         
         try:
-            # Debug logging
-            logger.info(f"🔍 Creating invoice with data: {invoice_data}")
             
             # Add timestamps
             now = datetime.utcnow().isoformat()
@@ -178,11 +176,9 @@ class DatabaseService:
             invoice_data.setdefault("status", "uploaded")
             invoice_data.setdefault("kfw_anrechenbare_kosten", False)
             
-            logger.info(f"🔍 Final invoice data being inserted: {invoice_data}")
             
             response = self._client.table(self.table_name).insert(invoice_data).execute()
             
-            logger.info(f"🔍 Supabase response: {response}")
             
             if response.data:
                 created = response.data[0]
@@ -192,7 +188,7 @@ class DatabaseService:
                 }))
                 return {"success": True, "data": created}
             else:
-                logger.error(f"❌ Failed to create invoice: {response}")
+                logger.error("❌ Failed to create invoice: insert returned no row")
                 return {"success": False, "error": "Insert failed"}
                 
         except Exception as e:
