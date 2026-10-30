@@ -89,6 +89,18 @@ CREATE TABLE IF NOT EXISTS public.invoices_clean (
   skonto_reminder_sent_at TIMESTAMP WITH TIME ZONE,
   skonto_decision VARCHAR(20) DEFAULT 'pending'::VARCHAR,
   actual_skonto_savings NUMERIC(10, 2),
+  -- §14 UStG / §13b UStG / §48 EStG (see database/migrations/004_invoice_tax_fields.sql)
+  rechnungsnummer VARCHAR(100),
+  rechnungsdatum DATE,
+  leistungsdatum DATE,
+  nettobetrag NUMERIC(12, 2),
+  ust_satz NUMERIC(5, 2),
+  ust_betrag NUMERIC(12, 2),
+  lieferant_ust_id VARCHAR(20),
+  lieferant_steuernummer VARCHAR(30),
+  lieferant_iban VARCHAR(34),
+  reverse_charge_13b BOOLEAN NOT NULL DEFAULT false,
+  freistellung_48b_gueltig_bis DATE,
   CONSTRAINT invoices_clean_pkey PRIMARY KEY (id),
   CONSTRAINT check_approval_status CHECK (
     (approval_status)::text = ANY (
@@ -144,6 +156,8 @@ CREATE INDEX IF NOT EXISTS idx_invoices_status ON public.invoices_clean USING bt
 CREATE INDEX IF NOT EXISTS idx_invoices_approval_status ON public.invoices_clean USING btree (approval_status) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS idx_skonto_reminders ON public.invoices_clean USING btree (skonto_datum, skonto_reminder_sent) TABLESPACE pg_default
 WHERE (skonto_datum IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_invoices_supplier_number ON public.invoices_clean USING btree (rechnungssteller, rechnungsnummer) TABLESPACE pg_default
+WHERE (rechnungsnummer IS NOT NULL);
 
 -- =====================================================================
 -- 4. APPROVAL TOKENS TABLE (Email link security)

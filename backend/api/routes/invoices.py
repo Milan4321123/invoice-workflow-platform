@@ -10,9 +10,17 @@ from services.database import db_service
 from services.dropdown_labels import with_labels
 from services.email_service import email_service
 from api.dependencies.auth import require_auth
+from services.invoice_compliance import ERROR, Finding, check_invoice, summarize
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Tax details from §14 UStG / §13b UStG / §48 EStG. Same name in the editor and the database.
+TAX_FIELDS = [
+    "rechnungsnummer", "rechnungsdatum", "leistungsdatum", "nettobetrag", "ust_satz", "ust_betrag",
+    "lieferant_ust_id", "lieferant_steuernummer", "lieferant_iban", "reverse_charge_13b",
+    "freistellung_48b_gueltig_bis",
+]
 
 @router.get("/invoices")
 async def get_invoices():
@@ -309,6 +317,38 @@ async def validate_invoice(invoice_id: str = Path(..., description="The invoice 
         logger.error(f"Failed to validate invoice {invoice_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to validate invoice: {str(e)}")
 
+@router.post("/invoices/{invoice_id}/compliance-check")
+async def check_invoice_compliance(
+    invoice_id: str = Path(..., description="The invoice ID"),
+    fields: Optional[Dict[str, Any]] = None,
+):
+    """
+    Check the invoice against §14 UStG, §13b UStG and §48 EStG.
+    Unsaved editor values in the body override the stored ones, so the editor
+    can show the result while the user types.
+    """
+    if not db_service.is_available:
+        raise HTTPException(status_code=503, detail="Database service not available")
+
+    result = db_service.get_invoice(invoice_id)
+    if not result["success"]:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    invoice = {**result["data"], **(fields or {})}
+    findings = check_invoice(invoice)
+
+    supplier, number = invoice.get("rechnungssteller"), invoice.get("rechnungsnummer")
+    if supplier and number:
+        duplicates = db_service.find_same_invoice_number(supplier, number, exclude_id=invoice_id)
+        for other in duplicates.get("data", []):
+            findings.insert(0, Finding(
+                "duplicate_invoice_number", ERROR, "rechnungsnummer",
+                f"Rechnungsnummer {number} von {supplier} ist bereits erfasst "
+                f"({other.get('file_name')}). Doppelte Zahlung vermeiden.",
+            ))
+
+    return {"invoice_id": invoice_id, **summarize(findings)}
+
 @router.get("/invoices/{invoice_id}/editor")
 async def get_invoice_editor_data(invoice_id: str = Path(..., description="The invoice ID")):
     """Get invoice data formatted for the editor interface"""
@@ -345,7 +385,8 @@ async def get_invoice_editor_data(invoice_id: str = Path(..., description="The i
                 "rechnungsart": invoice_data.get("rechnungsart", "rechnung"),
                 "kfw_anrechenbar": invoice_data.get("kfw_anrechenbare_kosten", False),
                 "rechnungspruefung_email": invoice_data.get("rechnungspruefung", ""),
-                "weiter_berechnen_an": invoice_data.get("weiter_berechnen_an", "")
+                "weiter_berechnen_an": invoice_data.get("weiter_berechnen_an", ""),
+                **{field: invoice_data.get(field) for field in TAX_FIELDS},
             },
             "filename": invoice_data.get("file_name", f"Invoice {invoice_id}")
         }
@@ -399,6 +440,11 @@ async def update_invoice_editor_data(
         
         # Remove None values but keep empty strings and False values for proper field clearing
         update_data = {k: v for k, v in update_data.items() if v is not None}
+
+        # Tax fields are dates and numbers, so a cleared input arrives as "" and is stored as NULL
+        for field in TAX_FIELDS:
+            if field in fields:
+                update_data[field] = None if fields[field] == "" else fields[field]
         
         # Update invoice fields first
         if update_data:

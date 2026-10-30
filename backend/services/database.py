@@ -1501,6 +1501,22 @@ class DatabaseService:
             logger.error(f"❌ Failed to get invoices with Skonto data: {e}")
             return {"success": False, "error": str(e)}
 
+    def find_same_invoice_number(self, supplier: str, invoice_number: str, exclude_id: str) -> Dict[str, Any]:
+        """Other invoices from the same supplier with the same number, i.e. a possible double payment"""
+        if not self.is_available:
+            return {"success": False, "error": "Database unavailable"}
+        try:
+            response = (self._client.table(self.table_name)
+                       .select("id,file_name,rechnungsdatum,rechnungsbetrag,status")
+                       .eq("rechnungssteller", supplier)
+                       .eq("rechnungsnummer", invoice_number)
+                       .neq("id", exclude_id)
+                       .execute())
+            return {"success": True, "data": response.data or []}
+        except Exception as e:
+            logger.error(f"❌ Duplicate invoice number check failed: {e}")
+            return {"success": False, "error": str(e)}
+
     def check_duplicate_by_filename(self, filename: str) -> Dict[str, Any]:
         """
         Check if a file with the given filename already exists in the database
