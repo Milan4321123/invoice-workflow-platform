@@ -20,6 +20,8 @@ import {
   Settings,
   ShieldCheck
 } from 'lucide-react';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useT } from '@/i18n/LanguageContext';
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -35,14 +37,16 @@ const Navigation = () => {
     router.replace('/login');
   };
 
+  const t = useT();
+
   const navItems = [
-    { href: '/', label: 'Startseite', icon: Home },
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/upload', label: 'Hochladen', icon: Upload },
-    { href: '/dashboard/folder-watcher', label: 'Ordnerüberwachung', icon: FolderOpen },
-    { href: '/prufbericht', label: 'Prüfbericht', icon: BarChart3 },
-    { href: '/health', label: 'Systemstatus', icon: Activity },
-    { href: '/datenschutz-anfragen', label: 'Datenschutz', icon: ShieldCheck },
+    { href: '/', label: t('nav.home'), icon: Home },
+    { href: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { href: '/upload', label: t('nav.upload'), icon: Upload },
+    { href: '/dashboard/folder-watcher', label: t('nav.folderWatcher'), icon: FolderOpen },
+    { href: '/prufbericht', label: t('nav.report'), icon: BarChart3 },
+    { href: '/health', label: t('nav.health'), icon: Activity },
+    { href: '/datenschutz-anfragen', label: t('nav.privacy'), icon: ShieldCheck },
   ];
 
   const isActiveRoute = (href: string) => {
@@ -50,7 +54,7 @@ const Navigation = () => {
   };
 
   return (
-    <nav aria-label="Hauptnavigation" className="fixed top-0 left-0 right-0 z-50 glass-nav">
+    <nav aria-label={t('nav.label')} className="fixed top-0 left-0 right-0 z-50 glass-nav">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
@@ -100,13 +104,15 @@ const Navigation = () => {
 
           {/* User Menu and Mobile Toggle */}
           <div className="flex items-center space-x-2">
+            <LanguageSwitcher />
+
             {/* User Profile Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                 aria-expanded={isProfileDropdownOpen}
                 aria-haspopup="menu"
-                aria-label="Benutzermenü"
+                aria-label={t('nav.userMenu')}
                 className="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-white/50 transition-all duration-200"
               >
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
@@ -126,8 +132,8 @@ const Navigation = () => {
                     onClick={handleSignOut}
                     className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >
-                    <LogOut className="h-4 w-4 mr-3" />
-                    Abmelden
+                    <LogOut className="h-4 w-4 mr-3" aria-hidden="true" />
+                    {t('nav.signOut')}
                   </button>
                 </div>
               )}
@@ -138,7 +144,7 @@ const Navigation = () => {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-navigation"
-              aria-label={isMobileMenuOpen ? 'Menü schließen' : 'Menü öffnen'}
+              aria-label={isMobileMenuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
               className="lg:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-lg transition-all duration-200"
             >
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -185,8 +191,8 @@ const Navigation = () => {
                 onClick={handleSignOut}
                 className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
               >
-                <LogOut className="h-4 w-4" />
-                <span>Abmelden</span>
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span>{t('nav.signOut')}</span>
               </button>
             </div>
           </div>

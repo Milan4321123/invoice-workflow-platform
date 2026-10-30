@@ -3,6 +3,7 @@
 import React from 'react';
 import { Calculator } from 'lucide-react';
 import type { GermanInvoiceFields } from '../CleanInvoiceForm';
+import { useT } from '@/i18n/LanguageContext';
 
 interface TaxDetailsSectionProps {
   fields: GermanInvoiceFields;
@@ -20,6 +21,7 @@ const parseAmount = (value: string) => (value === '' ? '' : parseFloat(value));
  * the construction-specific §13b UStG and §48b EStG fields.
  */
 export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsSectionProps) {
+  const t = useT();
   const net = typeof fields.nettobetrag === 'number' ? fields.nettobetrag : undefined;
   const rate = fields.reverse_charge_13b ? 0 : typeof fields.ust_satz === 'number' ? fields.ust_satz : undefined;
   const canCalculate = net !== undefined && rate !== undefined;
@@ -35,28 +37,28 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
   return (
     <section aria-labelledby="tax-details-heading" className="mt-8 pt-6 border-t border-gray-200">
       <h3 id="tax-details-heading" className="text-base font-semibold text-gray-900">
-        Steuerangaben
+        {t('tax.heading')}
       </h3>
       <p className="text-sm text-gray-500 mb-5">
-        Pflichtangaben für den Vorsteuerabzug nach §14 Abs. 4 UStG.
+        {t('tax.intro')}
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <label htmlFor="rechnungsnummer" className={labelClass}>Rechnungsnummer</label>
+          <label htmlFor="rechnungsnummer" className={labelClass}>{t('tax.number')}</label>
           <input
             id="rechnungsnummer"
             type="text"
             value={fields.rechnungsnummer || ''}
             onChange={(e) => onFieldChange('rechnungsnummer', e.target.value)}
             className={inputClass}
-            placeholder="z. B. RE-2026-0815"
+            placeholder={t('tax.numberPlaceholder')}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="rechnungsdatum" className={labelClass}>Rechnungsdatum</label>
+            <label htmlFor="rechnungsdatum" className={labelClass}>{t('tax.invoiceDate')}</label>
             <input
               id="rechnungsdatum"
               type="date"
@@ -66,7 +68,7 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
             />
           </div>
           <div>
-            <label htmlFor="leistungsdatum" className={labelClass}>Leistungsdatum</label>
+            <label htmlFor="leistungsdatum" className={labelClass}>{t('tax.supplyDate')}</label>
             <input
               id="leistungsdatum"
               type="date"
@@ -78,7 +80,7 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
         </div>
 
         <div>
-          <label htmlFor="nettobetrag" className={labelClass}>Nettobetrag</label>
+          <label htmlFor="nettobetrag" className={labelClass}>{t('tax.net')}</label>
           <div className="relative">
             <span aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">€</span>
             <input
@@ -96,7 +98,7 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="ust_satz" className={labelClass}>USt-Satz</label>
+            <label htmlFor="ust_satz" className={labelClass}>{t('tax.rate')}</label>
             <select
               id="ust_satz"
               value={fields.reverse_charge_13b ? '0' : fields.ust_satz ?? ''}
@@ -104,14 +106,14 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
               onChange={(e) => onFieldChange('ust_satz', e.target.value === '' ? '' : Number(e.target.value))}
               className={`${inputClass} disabled:bg-gray-100`}
             >
-              <option value="">Auswählen…</option>
+              <option value="">{t('tax.ratePlaceholder')}</option>
               <option value="19">19 %</option>
               <option value="7">7 %</option>
               <option value="0">0 %</option>
             </select>
           </div>
           <div>
-            <label htmlFor="ust_betrag" className={labelClass}>USt-Betrag</label>
+            <label htmlFor="ust_betrag" className={labelClass}>{t('tax.vat')}</label>
             <div className="relative">
               <span aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">€</span>
               <input
@@ -136,12 +138,12 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
             className="inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
           >
             <Calculator className="h-4 w-4" aria-hidden="true" />
-            USt-Betrag und Rechnungsbetrag aus Netto berechnen
+            {t('tax.calculate')}
           </button>
         </div>
 
         <div>
-          <label htmlFor="lieferant_ust_id" className={labelClass}>USt-IdNr. des Lieferanten</label>
+          <label htmlFor="lieferant_ust_id" className={labelClass}>{t('tax.vatId')}</label>
           <input
             id="lieferant_ust_id"
             type="text"
@@ -155,7 +157,7 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
 
         <div>
           <label htmlFor="lieferant_steuernummer" className={labelClass}>
-            Steuernummer <span className="font-normal text-gray-500">(falls keine USt-IdNr.)</span>
+            {t('tax.taxNumber')} <span className="font-normal text-gray-500">{t('tax.taxNumberHint')}</span>
           </label>
           <input
             id="lieferant_steuernummer"
@@ -169,7 +171,7 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
         </div>
 
         <div className="lg:col-span-2">
-          <label htmlFor="lieferant_iban" className={labelClass}>IBAN des Lieferanten</label>
+          <label htmlFor="lieferant_iban" className={labelClass}>{t('tax.iban')}</label>
           <input
             id="lieferant_iban"
             type="text"
@@ -195,17 +197,17 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
           />
           <div>
             <label htmlFor="reverse_charge_13b" className="text-sm font-medium text-gray-700">
-              Steuerschuldnerschaft des Leistungsempfängers (§13b UStG)
+              {t('tax.reverseCharge')}
             </label>
             <p id="reverse_charge_13b_hint" className="text-xs text-gray-500 mt-1">
-              Bei Bauleistungen an Bauunternehmen: Der Lieferant weist keine USt aus, wir melden sie selbst an.
+              {t('tax.reverseChargeHint')}
             </p>
           </div>
         </div>
 
         <div className="lg:col-span-2">
           <label htmlFor="freistellung_48b_gueltig_bis" className={labelClass}>
-            Freistellungsbescheinigung (§48b EStG) gültig bis
+            {t('tax.exemption')}
           </label>
           <input
             id="freistellung_48b_gueltig_bis"
@@ -216,7 +218,7 @@ export default function TaxDetailsSection({ fields, onFieldChange }: TaxDetailsS
             className={inputClass}
           />
           <p id="freistellung_hint" className="text-xs text-gray-500 mt-1">
-            Ohne gültige Bescheinigung sind bei Bauleistungen 15 % Bauabzugsteuer einzubehalten.
+            {t('tax.exemptionHint')}
           </p>
         </div>
       </div>

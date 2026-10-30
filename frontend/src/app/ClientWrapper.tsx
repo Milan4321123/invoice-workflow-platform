@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import Navigation from '@/components/Navigation'
 import LegalFooter from '@/components/LegalFooter'
+import { LanguageProvider, useT } from '@/i18n/LanguageContext'
 
 interface ClientWrapperProps {
   children: React.ReactNode
@@ -12,6 +13,7 @@ interface ClientWrapperProps {
 
 function AppContent({ children }: ClientWrapperProps) {
   const { isAuthenticated } = useAuth(); // Removed isLoading since we don't need it
+  const t = useT()
   const pathname = usePathname()
   
   // Don't show navigation on login page
@@ -29,7 +31,7 @@ function AppContent({ children }: ClientWrapperProps) {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-blue-700 focus:shadow-lg"
       >
-        Zum Inhalt springen
+        {t('app.skipToContent')}
       </a>
       {showNavigation && <Navigation />}
       <main id="main-content" tabIndex={-1} className={`relative z-10 focus:outline-none ${showNavigation ? 'pt-16' : ''}`}>
@@ -42,8 +44,10 @@ function AppContent({ children }: ClientWrapperProps) {
 
 export default function ClientWrapper({ children }: ClientWrapperProps) {
   return (
-    <AuthProvider>
-      <AppContent>{children}</AppContent>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <AppContent>{children}</AppContent>
+      </AuthProvider>
+    </LanguageProvider>
   )
 }

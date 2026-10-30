@@ -25,6 +25,7 @@ import InvoiceMobileCard from './InvoiceMobileCard'
 import { buildApiUrl, API_CONFIG } from '@/config/api'
 import { authFetch } from '@/lib/authFetch';
 import { apiErrorMessage } from '@/lib/apiError';
+import { useT } from '@/i18n/LanguageContext';
 
 interface CleanInvoice {
   id: string
@@ -69,6 +70,7 @@ export default function CleanInvoiceDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [exportYear, setExportYear] = useState(new Date().getFullYear())
+  const t = useT()
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean
     invoiceId: string
@@ -166,7 +168,7 @@ export default function CleanInvoiceDashboard() {
     try {
       const response = await authFetch(buildApiUrl(`/api/exports/gobd?year=${exportYear}`))
       if (!response.ok) {
-        throw new Error(await apiErrorMessage(response, 'Export fehlgeschlagen'))
+        throw new Error(await apiErrorMessage(response, t('dashboard.exportFailed')))
       }
       const url = URL.createObjectURL(await response.blob())
       const link = document.createElement('a')
@@ -175,7 +177,7 @@ export default function CleanInvoiceDashboard() {
       link.click()
       URL.revokeObjectURL(url)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Export fehlgeschlagen')
+      toast.error(err instanceof Error ? err.message : t('dashboard.exportFailed'))
     }
   }
 
@@ -578,7 +580,7 @@ export default function CleanInvoiceDashboard() {
               </Link>
               
               <div className="flex items-center rounded-xl bg-white shadow-lg overflow-hidden">
-                <label htmlFor="gobd-export-year" className="sr-only">Jahr für den GoBD-Export</label>
+                <label htmlFor="gobd-export-year" className="sr-only">{t('dashboard.exportYear')}</label>
                 <select
                   id="gobd-export-year"
                   value={exportYear}
@@ -592,10 +594,10 @@ export default function CleanInvoiceDashboard() {
                 <button
                   onClick={exportForTaxAudit}
                   className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  title="Rechnungen und Änderungsprotokoll für die Betriebsprüfung exportieren (§147 Abs. 6 AO)"
+                  title={t('dashboard.exportTitle')}
                 >
                   <Download className="h-4 w-4" aria-hidden="true" />
-                  <span>GoBD-Export</span>
+                  <span>{t('dashboard.export')}</span>
                 </button>
               </div>
 
@@ -799,7 +801,7 @@ export default function CleanInvoiceDashboard() {
                                 className="mt-1 inline-block rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800"
                                 title={invoice.e_rechnung_format}
                               >
-                                E-Rechnung
+                                {t('dashboard.eInvoiceBadge')}
                               </span>
                             )}
                             <div className="text-xs text-gray-500">

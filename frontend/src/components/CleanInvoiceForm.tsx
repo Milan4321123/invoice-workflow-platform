@@ -8,6 +8,7 @@ import { authFetch } from '@/lib/authFetch';
 import TaxDetailsSection from './compliance/TaxDetailsSection';
 import ComplianceChecklist from './compliance/ComplianceChecklist';
 import AuditHistory from './compliance/AuditHistory';
+import { useT } from '@/i18n/LanguageContext';
 
 // German invoice field types
 export interface GermanInvoiceFields {
@@ -82,6 +83,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
   const [showInvoiceSaveConfirmation, setShowInvoiceSaveConfirmation] = useState(false);
   const [showInvoiceCompleteConfirmation, setShowInvoiceCompleteConfirmation] = useState(false);
   const [confirmationText, setConfirmationText] = useState('');
+  const t = useT();
 
   // Load dropdown options from API
   const loadDropdownOptions = async () => {
@@ -641,7 +643,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
           <div className="space-y-6">
             <div>
               <label htmlFor="rechnungsbetrag" className="block text-sm font-medium text-gray-700 mb-2">
-                Rechnungsbetrag
+                {t('form.amount')}
               </label>
               <div className="relative">
                 <span aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">€</span>
@@ -659,7 +661,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
 
             <div>
               <label htmlFor="rechnungseingang" className="block text-sm font-medium text-gray-700 mb-2">
-                Rechnungseingang
+                {t('form.received')}
               </label>
               <input
                   id="rechnungseingang"
@@ -672,7 +674,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
 
             <div>
               <label htmlFor="faelligkeit" className="block text-sm font-medium text-gray-700 mb-2">
-                Fälligkeit
+                {t('form.due')}
               </label>
               <input
                   id="faelligkeit"
@@ -686,7 +688,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="skonto_datum" className="block text-sm font-medium text-gray-700 mb-2">
-                  Skonto Datum
+                  {t('form.skontoDate')}
                 </label>
                 <input
                   id="skonto_datum"
@@ -699,7 +701,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
 
               <div>
                 <label htmlFor="skonto_prozent" className="block text-sm font-medium text-gray-700 mb-2">
-                  Skonto Prozent
+                  {t('form.skontoPercent')}
                 </label>
                 <div className="relative">
                   <input
@@ -720,7 +722,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
 
             <div>
               <label htmlFor="rechnungsart" className="block text-sm font-medium text-gray-700 mb-2">
-                Rechnungsart
+                {t('form.type')}
               </label>
               <select
                   id="rechnungsart"
@@ -744,15 +746,15 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
                 className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="kfw_anrechenbar" className="ml-3 block text-sm font-medium text-gray-700">
-                KfW anrechenbar
+                {t('form.kfw')}
               </label>
             </div>
 
             <div>
               <label htmlFor="rechnungspruefung_email" className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 <span className="text-red-500">*</span>
-                Rechnungsprüfung Email
-                <span className="text-xs text-red-600 font-normal">(Pflichtfeld)</span>
+                {t('form.reviewerEmail')}
+                <span className="text-xs text-red-600 font-normal">{t('form.required')}</span>
               </label>
               <input
                   id="rechnungspruefung_email"

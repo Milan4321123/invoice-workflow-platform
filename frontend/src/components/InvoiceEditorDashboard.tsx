@@ -7,6 +7,7 @@ import CleanInvoiceForm, { GermanInvoiceFields } from './CleanInvoiceForm';
 import { FileText, Eye, Edit3, AlertTriangle, CheckCircle, Monitor, FileInput, FileCode2, BadgeCheck, Lock } from 'lucide-react';
 import { authFetch } from '@/lib/authFetch';
 import { apiErrorMessage } from '@/lib/apiError';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface InvoiceEditorDashboardProps {
   invoiceId: string;
@@ -27,6 +28,7 @@ export default function InvoiceEditorDashboard({
   const [mimeType, setMimeType] = useState<string | null>(null);
   const [eRechnungFormat, setERechnungFormat] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
+  const { locale, t } = useLanguage();
   const [retentionUntil, setRetentionUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(!initialData);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -262,7 +264,7 @@ export default function InvoiceEditorDashboard({
               }`}
             >
               <Monitor className="h-4 w-4" />
-              <span>PDF</span>
+              <span>{t('editor.pdf')}</span>
             </button>
             <button
               onClick={() => setMobileView('form')}
@@ -273,7 +275,7 @@ export default function InvoiceEditorDashboard({
               }`}
             >
               <FileInput className="h-4 w-4" />
-              <span>Formular</span>
+              <span>{t('editor.form')}</span>
             </button>
           </div>
         </div>
@@ -288,11 +290,8 @@ export default function InvoiceEditorDashboard({
               <div className="flex items-center justify-center h-full bg-gray-800 p-8">
                 <div className="text-center text-gray-300 max-w-sm">
                   <FileCode2 className="h-16 w-16 mx-auto mb-4 text-gray-400" aria-hidden="true" />
-                  <p className="text-lg font-medium text-white">E-Rechnung ohne Bilddarstellung</p>
-                  <p className="text-sm mt-2">
-                    Eine XRechnung besteht nur aus strukturierten Daten. Alle Angaben wurden aus dem XML
-                    übernommen und stehen im Formular; die Originaldatei bleibt unverändert archiviert.
-                  </p>
+                  <p className="text-lg font-medium text-white">{t('editor.xmlTitle')}</p>
+                  <p className="text-sm mt-2">{t('editor.xmlBody')}</p>
                 </div>
               </div>
             ) : pdfUrl ? (
@@ -306,7 +305,7 @@ export default function InvoiceEditorDashboard({
               <div className="flex items-center justify-center h-full bg-gray-800">
                 <div className="text-center text-gray-400">
                   <FileText className="h-16 w-16 mx-auto mb-4" />
-                  <p className="text-lg">Kein PDF-Dokument verfügbar</p>
+                  <p className="text-lg">{t('editor.noPdf')}</p>
                 </div>
               </div>
             )}
@@ -319,9 +318,10 @@ export default function InvoiceEditorDashboard({
             <div role="note" className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm text-amber-900">
               <Lock className="h-5 w-5 shrink-0 mt-0.5" aria-hidden="true" />
               <p>
-                <span className="font-semibold">Freigegeben und festgeschrieben.</span>{' '}
-                Buchungsrelevante Angaben können nicht mehr geändert werden (GoBD). Aufbewahrung bis{' '}
-                {retentionUntil ? new Date(retentionUntil).toLocaleDateString('de-DE') : 'Fristende'}.
+                <span className="font-semibold">{t('editor.locked')}</span>{' '}
+                {t('editor.lockedBody', {
+                  date: retentionUntil ? new Date(retentionUntil).toLocaleDateString(locale === 'en' ? 'en-GB' : 'de-DE') : '—',
+                })}
               </p>
             </div>
           )}
@@ -329,9 +329,8 @@ export default function InvoiceEditorDashboard({
             <div className="flex items-start gap-3 border-b border-green-200 bg-green-50 px-6 py-3 text-sm text-green-800">
               <BadgeCheck className="h-5 w-5 shrink-0 mt-0.5" aria-hidden="true" />
               <p>
-                <span className="font-semibold">E-Rechnung: {eRechnungFormat}.</span>{' '}
-                Die Felder stammen aus dem XML, das bei Abweichungen vom PDF maßgeblich ist. Bitte nur Projekt,
-                Gewerk und Prüfer ergänzen.
+                <span className="font-semibold">{t('editor.eInvoice', { format: eRechnungFormat })}</span>{' '}
+                {t('editor.eInvoiceBody')}
               </p>
             </div>
           )}

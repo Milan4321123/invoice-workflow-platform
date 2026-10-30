@@ -5,6 +5,7 @@ import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import { buildApiUrl, API_CONFIG } from '@/config/api';
 import { api } from '@/services/apiClient';
+import { useT } from '@/i18n/LanguageContext';
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -34,6 +35,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadedFile, setUploadedFile] = useState<UploadResponse | null>(null);
+  const t = useT();
   
   const validateFilename = (filename: string): boolean => FILENAME_PATTERN.test(filename);
   
@@ -57,7 +59,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
     
     // Validate file type
     if (file.type !== "application/pdf" && !isXml(file)) {
-      const errorMsg = "Nur PDF-Dateien oder E-Rechnungen (XRechnung-XML) sind erlaubt";
+      const errorMsg = t('upload.wrongType');
       setErrorMessage(errorMsg);
       setStatus("error");
       toast.error(errorMsg);
@@ -67,7 +69,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
     
     // Validate filename format
     if (!validateFilename(file.name)) {
-      const errorMsg = "Dateiname muss dem Muster folgen: JJJJMMTT_PROJEKT_GEWERK_LIEFERANT.pdf (oder .xml)";
+      const errorMsg = t('upload.wrongName');
       setErrorMessage(errorMsg);
       setStatus("error");
       toast.error("Ungültiges Dateinamen-Format");
@@ -98,8 +100,8 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
       setStatus("success");
       setUploadedFile(data);
       toast.success(data.e_invoice_format
-        ? `E-Rechnung erkannt (${data.e_invoice_format}): Felder wurden automatisch ausgefüllt`
-        : "Datei erfolgreich hochgeladen!");
+        ? t('upload.toastEInvoice', { format: data.e_invoice_format })
+        : t('upload.toastDone'));
       
       if (onUploadComplete) {
         onUploadComplete(data);
@@ -113,7 +115,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
       toast.error(errorMsg);
       onUploadError?.(errorMsg);
     }
-  }, [onUploadComplete, onUploadStart, onUploadError]);
+  }, [onUploadComplete, onUploadStart, onUploadError, t]);
   
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
@@ -153,7 +155,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </div>
-            <p className="text-lg font-medium mb-4 gradient-text">Hochladen...</p>
+            <p className="text-lg font-medium mb-4 gradient-text">{t('upload.uploading')}</p>
             <div className="w-full glass-card rounded-full h-3 max-w-xs mx-auto border border-blue-200 overflow-hidden">
               <div 
                 className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full transition-all duration-300 animate-pulse" 
@@ -169,14 +171,14 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-lg font-medium mb-4 gradient-text">Upload erfolgreich!</p>
+            <p className="text-lg font-medium mb-4 gradient-text">{t('upload.success')}</p>
             {uploadedFile && (
               <div className="text-sm text-gray-700 mt-4 glass-card rounded-xl p-4 border border-green-200">
-                <p className="flex justify-between"><strong>Datei:</strong> <span className="font-mono">{uploadedFile.filename}</span></p>
-                <p className="flex justify-between"><strong>Größe:</strong> <span className="font-mono">{formatFileSize(uploadedFile.file_size)}</span></p>
-                <p className="flex justify-between"><strong>Status:</strong> <span className="font-mono text-green-600">{uploadedFile.status}</span></p>
+                <p className="flex justify-between"><strong>{t('upload.file')}</strong> <span className="font-mono">{uploadedFile.filename}</span></p>
+                <p className="flex justify-between"><strong>{t('upload.size')}</strong> <span className="font-mono">{formatFileSize(uploadedFile.file_size)}</span></p>
+                <p className="flex justify-between"><strong>{t('upload.status')}</strong> <span className="font-mono text-green-600">{uploadedFile.status}</span></p>
                 {uploadedFile.e_invoice_format && (
-                  <p className="flex justify-between"><strong>E-Rechnung:</strong> <span className="font-mono text-green-600">{uploadedFile.e_invoice_format}</span></p>
+                  <p className="flex justify-between"><strong>{t('upload.eInvoice')}</strong> <span className="font-mono text-green-600">{uploadedFile.e_invoice_format}</span></p>
                 )}
               </div>
             )}
@@ -187,7 +189,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
               }}
               className="mt-4 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-105 shadow-lg"
             >
-              Weitere Datei hochladen
+              {t('upload.another')}
             </button>
           </div>
         ) : status === 'error' ? (
@@ -197,7 +199,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <p className="text-lg font-medium mb-2 gradient-text">Upload fehlgeschlagen</p>
+            <p className="text-lg font-medium mb-2 gradient-text">{t('upload.failed')}</p>
             <p className="text-sm text-gray-700 glass-card rounded-xl p-3 border border-red-200 mb-4">{errorMessage}</p>
             <button 
               onClick={(e) => {
@@ -206,7 +208,7 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
               }}
               className="mt-2 px-6 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all transform hover:scale-105 shadow-lg"
             >
-              Erneut versuchen
+              {t('upload.retry')}
             </button>
           </div>
         ) : (
@@ -217,17 +219,17 @@ export default function Dropzone({ onUploadComplete, onUploadStart, onUploadErro
               </svg>
             </div>
             <p className="text-xl font-medium mb-2 gradient-text">
-              {isDragActive ? 'Rechnung hier ablegen' : 'Rechnung (PDF oder XRechnung) per Drag & Drop hier ablegen'}
+              {isDragActive ? t('upload.dropActive') : t('upload.dropIdle')}
             </p>
-            <p className="text-sm text-gray-500 mb-6">oder klicken Sie, um eine Datei auszuwählen</p>
+            <p className="text-sm text-gray-500 mb-6">{t('upload.orClick')}</p>
             <div className="text-sm text-gray-700 glass-card rounded-xl p-4 max-w-md mx-auto border border-purple-200 shadow-lg">
-              <p className="font-medium mb-2 gradient-text">📋 Dateinamen-Anforderungen:</p>
+              <p className="font-medium mb-2 gradient-text">📋 {t('upload.nameRules')}</p>
               <p className="font-mono text-purple-700 mb-1">JJJJMMTT_PROJEKT_GEWERK_LIEFERANT.pdf</p>
               <p className="text-xs text-gray-600 mt-2">
-                <span className="font-medium">Beispiel:</span> 20250704_OMEGA_ELEKTRO_Mueller.pdf
+                <span className="font-medium">{t('upload.example')}</span> 20250704_OMEGA_ELEKTRO_Mueller.pdf
               </p>
               <p className="text-xs text-gray-600 mt-2">
-                E-Rechnungen (ZUGFeRD, Factur-X, XRechnung) werden erkannt und die Felder automatisch ausgefüllt.
+                {t('upload.eInvoiceHint')}
               </p>
             </div>
           </div>

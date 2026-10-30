@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { History } from 'lucide-react';
 import { getApiUrl } from '@/config/api';
 import { authFetch } from '@/lib/authFetch';
+import { useLanguage } from '@/i18n/LanguageContext';
+import { de, type MessageKey } from '@/i18n/messages';
 
 interface AuditEntry {
   seq: number;
@@ -12,19 +14,6 @@ interface AuditEntry {
   changes: Record<string, { old: unknown; new: unknown }>;
   recorded_at: string;
 }
-
-const ACTION_LABELS: Record<string, string> = {
-  created: 'Erfasst',
-  updated: 'Bearbeitet',
-  status_changed: 'Status geändert',
-  editing_completed: 'Bearbeitung abgeschlossen',
-  bauleiter_email_sent: 'An Bauleiter gesendet',
-  approval_decided: 'Freigabe entschieden',
-  email_logged: 'E-Mail protokolliert',
-  skonto_reminder_sent: 'Skonto-Erinnerung gesendet',
-  skonto_decision: 'Skonto-Entscheidung',
-  deleted: 'Gelöscht',
-};
 
 const formatValue = (value: unknown) =>
   value === null || value === undefined || value === '' ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -36,6 +25,11 @@ const formatValue = (value: unknown) =>
 export default function AuditHistory({ invoiceId }: { invoiceId: string }) {
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const { locale, t } = useLanguage();
+  const actionLabel = (action: string) => {
+    const key = `history.action.${action}` as MessageKey;
+    return key in de ? t(key) : action;
+  };
 
   const load = async () => {
     try {
@@ -58,24 +52,24 @@ export default function AuditHistory({ invoiceId }: { invoiceId: string }) {
     >
       <summary className="flex cursor-pointer items-center gap-2 text-base font-semibold text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
         <History className="h-4 w-4 text-gray-500" aria-hidden="true" />
-        Änderungsprotokoll
+        {t('history.heading')}
       </summary>
 
       <div className="mt-4">
-        {failed && <p className="text-sm text-gray-500">Protokoll konnte nicht geladen werden.</p>}
-        {!failed && entries === null && <p className="text-sm text-gray-500">Wird geladen…</p>}
-        {entries?.length === 0 && <p className="text-sm text-gray-500">Noch keine Einträge.</p>}
+        {failed && <p className="text-sm text-gray-500">{t('history.failed')}</p>}
+        {!failed && entries === null && <p className="text-sm text-gray-500">{t('history.loading')}</p>}
+        {entries?.length === 0 && <p className="text-sm text-gray-500">{t('history.empty')}</p>}
 
         {entries && entries.length > 0 && (
           <ol className="space-y-4">
             {entries.map((entry) => (
               <li key={entry.seq} className="text-sm">
                 <p className="text-gray-900">
-                  <span className="font-medium">{ACTION_LABELS[entry.action] || entry.action}</span>
+                  <span className="font-medium">{actionLabel(entry.action)}</span>
                   <span className="text-gray-500">
                     {' '}· {entry.actor} ·{' '}
                     <time dateTime={entry.recorded_at}>
-                      {new Date(entry.recorded_at).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })}
+                      {new Date(entry.recorded_at).toLocaleString(locale === 'en' ? 'en-GB' : 'de-DE', { dateStyle: 'medium', timeStyle: 'short' })}
                     </time>
                   </span>
                 </p>
