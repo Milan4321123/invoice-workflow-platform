@@ -1,0 +1,5 @@
+# § 33 Rechnungen über Kleinbeträge
+
+Quelle: https://www.gesetze-im-internet.de/ustdv_1980/__33.html (abgerufen am 30.10.2026). Amtliches Werk, gemeinfrei nach § 5 UrhG.
+
+Eine Rechnung, deren Gesamtbetrag 250 Euro nicht übersteigt, muss mindestens folgende Angaben enthalten: 1. den vollständigen Namen und die vollständige Anschrift des leistenden Unternehmers, 2. das Ausstellungsdatum, 3. die Menge und die Art der gelieferten Gegenstände oder den Umfang und die Art der sonstigen Leistung und 4. das Entgelt und den darauf entfallenden Steuerbetrag für die Lieferung oder sonstige Leistung in einer Summe sowie den anzuwendenden Steuersatz oder im Fall einer Steuerbefreiung einen Hinweis darauf, dass für die Lieferung oder sonstige Leistung eine Steuerbefreiung gilt.Die §§ 31 und 32 sind entsprechend anzuwenden. Die Sätze 1 und 2 gelten nicht für Rechnungen über Leistungen im Sinne der §§ 3c, 6a und 13b des Gesetzes. Eine Rechnung nach Satz 1 kann abweichend von § 14 Absatz 2 Satz 2 des Gesetzes immer als sonstige Rechnung im Sinne von § 14 Absatz 1 Satz 4 des Gesetzes übermittelt werden.
