@@ -23,6 +23,9 @@ _TEST_ENV = {
     "ANTHROPIC_API_KEY": "",
     "ANTHROPIC_AUTH_TOKEN": "",
     "AI_FEATURES_ENABLED": "false",
+    "AI_PROVIDER": "anthropic",
+    "GEMINI_API_KEY": "",
+    "GEMINI_PAID_TIER": "false",
 }
 os.environ.update(_TEST_ENV)
 

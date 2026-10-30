@@ -143,12 +143,17 @@ export default function AssistantPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<'live' | 'offline' | null>(null);
+  const [model, setModel] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     authFetch(buildApiUrl('/api/ai/status'))
       .then((r) => (r.ok ? r.json() : null))
-      .then((status) => status && setMode(status.mode))
+      .then((status) => {
+        if (!status) return;
+        setMode(status.mode);
+        setModel(status.model);
+      })
       .catch(() => setMode(null));
   }, []);
 
@@ -202,7 +207,7 @@ export default function AssistantPage() {
 
       {mode && (
         <p role="note" className={`mt-4 rounded-lg border px-4 py-3 text-sm ${mode === 'live' ? 'border-purple-200 bg-purple-50 text-purple-900' : 'border-gray-200 bg-white/70 text-gray-700'}`}>
-          {mode === 'live' ? t('ai.disclosureLive') : t('ai.disclosureOffline')}
+          {mode === 'live' ? t('ai.disclosureLive', { model }) : t('ai.disclosureOffline')}
         </p>
       )}
 

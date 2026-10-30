@@ -135,7 +135,7 @@ export const de = {
 
   'ai.badgeLive': 'KI-generiert',
   'ai.badgeOffline': 'Offline-Modus',
-  'ai.disclosureLive': 'Antworten erstellt eine KI (Claude). Sie kann sich irren: bitte prüfen. Änderungen schlägt sie nur vor; entscheiden tun Sie.',
+  'ai.disclosureLive': 'Antworten erstellt eine KI ({model}). Sie kann sich irren: bitte prüfen. Änderungen schlägt sie nur vor; entscheiden tun Sie.',
   'ai.disclosureOffline': 'Offline-Modus: kein KI-Modell eingerichtet. Werkzeuge, Regelprüfung und Gesetzessuche funktionieren trotzdem; Fragen werden über Stichworte zugeordnet.',
   'ai.title': 'Rechnungsassistent',
   'ai.subtitle': 'Fragen zu Rechnungen, Skonto und Steuerregeln. Der Assistent nutzt die Funktionen der Plattform und zitiert Gesetze.',
@@ -311,7 +311,7 @@ export const en: Record<MessageKey, string> = {
 
   'ai.badgeLive': 'AI-generated',
   'ai.badgeOffline': 'Offline mode',
-  'ai.disclosureLive': 'Answers are written by an AI (Claude). It can be wrong: please check. It only proposes changes; you decide.',
+  'ai.disclosureLive': 'Answers are written by an AI ({model}). It can be wrong: please check. It only proposes changes; you decide.',
   'ai.disclosureOffline': 'Offline mode: no AI model configured. Tools, rule checks and the statute search still work; questions are routed by keywords.',
   'ai.title': 'Invoice assistant',
   'ai.subtitle': 'Questions about invoices, early-payment discounts and tax rules. The assistant uses the platform\'s functions and cites the law.',

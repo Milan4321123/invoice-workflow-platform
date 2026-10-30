@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Path
 from pydantic import BaseModel, Field
 
 from services.ai import agent, correction, extraction, llm, rag
+from services.ai.gemini import GeminiError, GeminiRateLimit
 from services.audit import current_actor
 from services.database import db_service
 from services.invoice_compliance import check_stored_invoice
@@ -33,6 +34,12 @@ def _guard(call):
         return call()
     except llm.AIRefused as e:
         raise HTTPException(status_code=422, detail=f"Die KI hat die Anfrage abgelehnt: {e}")
+    except GeminiRateLimit:
+        raise HTTPException(status_code=503, detail="Das Gratis-Kontingent von Gemini ist gerade aufgebraucht. "
+                                                    "Bitte in einer Minute noch einmal versuchen.")
+    except GeminiError as e:
+        logger.error(f"AI provider error: {e}")
+        raise HTTPException(status_code=503, detail="Der KI-Dienst ist nicht erreichbar.")
     except anthropic.RateLimitError:
         raise HTTPException(status_code=503, detail="Der KI-Dienst ist gerade ausgelastet. Bitte gleich noch einmal versuchen.")
     except (anthropic.APIConnectionError, anthropic.APIStatusError) as e:
@@ -51,7 +58,8 @@ def _invoice(invoice_id: str) -> Dict[str, Any]:
 
 @router.get("/ai/status")
 async def ai_status():
-    return {"mode": llm.mode(), "model": llm.MODEL, "enabled": llm.enabled(), "has_credentials": llm.has_credentials()}
+    return {"mode": llm.mode(), "provider": llm.provider(), "model": llm.model(), "enabled": llm.enabled(),
+            "has_credentials": llm.has_credentials(), "offline_reason": llm.offline_reason()}
 
 
 @router.post("/ai/ask")
@@ -79,7 +87,7 @@ async def extract_fields(invoice_id: str = Path(...)):
 
     result = _guard(lambda: extraction.extract(pdf))
     # GoBD: it stays traceable that values were suggested by AI, and to whom
-    actor = f"KI ({llm.MODEL if result['mode'] == 'live' else 'offline'}) für {current_actor.get()}"
+    actor = f"KI ({llm.model() if result['mode'] == 'live' else 'offline'}) für {current_actor.get()}"
     db_service.audit.record(invoice_id, "ai_suggestion",
                             {"vorgeschlagene_felder": {"old": None, "new": sorted(result["fields"])}}, actor=actor)
     return result

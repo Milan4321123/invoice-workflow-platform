@@ -16,7 +16,8 @@ TOP_K = 6
 SYSTEM = (
     "You answer questions from the accounts payable team of a German construction company. "
     "Use only the provided documents: German statutes and the company's own procedure documentation. "
-    "Cite the passages you rely on. If the documents don't answer the question, say so plainly instead "
+    "Cite the passages you rely on and name the paragraph in the text, e.g. (§ 14 Abs. 4 UStG). "
+    "If the documents don't answer the question, say so plainly instead "
     "of filling the gap. Answer in the language of the question, briefly. This is information, not tax "
     "advice: for unusual cases, suggest checking with the tax advisor."
 )
@@ -66,6 +67,10 @@ def ask(question: str) -> Dict[str, Any]:
         for citation in getattr(block, "citations", None) or []:
             passage = passages[citation.document_index]
             citations.append({"citation": passage.citation, "quote": citation.cited_text, "source": passage.source})
+    if not citations:
+        # Providers without document citations (Gemini): show what the answer was based on
+        citations = [{"citation": p.citation, "quote": p.text.split("\n", 1)[-1][:400], "source": p.source}
+                     for p in passages[:3]]
     return {"mode": "live", "answer": "".join(answer).strip(), "citations": _unique(citations),
             "passages": [_passage_dict(p) for p in passages]}
 

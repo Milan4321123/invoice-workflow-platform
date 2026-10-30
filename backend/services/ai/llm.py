@@ -3,9 +3,12 @@ The one place the platform talks to Claude.
 
 Two modes, decided per request:
 
-- live: AI_FEATURES_ENABLED=true and an Anthropic credential is configured.
-  Sending invoice data to an AI provider is a DSGVO decision (processor
-  agreement, transfer basis), so it is never on by default.
+- live: AI_FEATURES_ENABLED=true and a credential for the chosen provider
+  (AI_PROVIDER=anthropic, the default, or gemini). Sending invoice data to
+  an AI provider is a DSGVO decision (processor agreement, transfer basis),
+  so it is never on by default. Gemini's free tier may use submitted data
+  to improve Google's products, so a free Gemini key only goes live in
+  demo mode (fictional data) unless GEMINI_PAID_TIER=true.
 - offline: everything else. Each feature has a deterministic fallback
   (text extraction and rules, lexical retrieval, templates), so the
   workflow keeps working and nothing leaves the server.
@@ -21,7 +24,7 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-MODEL = os.getenv("AI_MODEL", "claude-opus-5-5")
+MODEL = os.getenv("AI_MODEL", "claude-opus-5-5")  # Anthropic model; see model() for the active one
 # Re-runs a request declined by a safety classifier on a suitable model, server-side
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
@@ -31,6 +34,7 @@ PRICES = {
     "claude-sonnet-5-5": (2.00, 10.00),
     "claude-haiku-5-5": (0.10, 0.50),
 }
+# Models not listed (e.g. Gemini on the free tier) are counted at 0
 
 _client: Any = None
 
@@ -52,8 +56,8 @@ class Usage:
         self.input_tokens += getattr(usage, "input_tokens", 0) or 0
         self.output_tokens += getattr(usage, "output_tokens", 0) or 0
 
-    def cost_usd(self, model: str = MODEL) -> float:
-        price_in, price_out = PRICES.get(model, PRICES["claude-opus-5-5"])
+    def cost_usd(self, model_id: Optional[str] = None) -> float:
+        price_in, price_out = PRICES.get(model_id or model(), (0.0, 0.0))
         return round((self.input_tokens * price_in + self.output_tokens * price_out) / 1_000_000, 6)
 
 
@@ -61,12 +65,40 @@ def enabled() -> bool:
     return os.getenv("AI_FEATURES_ENABLED", "false").lower() == "true"
 
 
+def provider() -> str:
+    return "gemini" if os.getenv("AI_PROVIDER", "anthropic").lower() == "gemini" else "anthropic"
+
+
+def model() -> str:
+    if provider() == "gemini":
+        from services.ai.gemini import DEFAULT_MODEL
+        return os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
+    return MODEL
+
+
 def has_credentials() -> bool:
-    return bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")) or _client is not None
+    if _client is not None:
+        return True
+    if provider() == "gemini":
+        return bool(os.getenv("GEMINI_API_KEY"))
+    return bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN"))
+
+
+def offline_reason() -> Optional[str]:
+    """Why AI isn't live, or None if it is."""
+    if not enabled():
+        return "AI_FEATURES_ENABLED is not true"
+    if not has_credentials():
+        return f"no API key for {provider()}"
+    if (provider() == "gemini" and _client is None
+            and os.getenv("GEMINI_PAID_TIER", "false").lower() != "true"
+            and os.getenv("DEMO_MODE", "false").lower() != "true"):
+        return "a free-tier Gemini key is only used with demo data (set GEMINI_PAID_TIER=true for a paid project)"
+    return None
 
 
 def mode() -> str:
-    return "live" if enabled() and has_credentials() else "offline"
+    return "live" if offline_reason() is None else "offline"
 
 
 def set_client(client: Any) -> None:
@@ -80,19 +112,25 @@ def client() -> Any:
     if mode() != "live":
         raise AIUnavailable("AI is not configured for live use")
     if _client is None:
-        import anthropic
-        _client = anthropic.Anthropic()
+        if provider() == "gemini":
+            from services.ai.gemini import GeminiClient
+            _client = GeminiClient()
+        else:
+            import anthropic
+            _client = anthropic.Anthropic()
     return _client
 
 
 def create(feature: str, **params: Any) -> Any:
     """
     messages.create with the platform defaults: the configured model,
-    server-side refusal fallback, and usage recording. Raises AIRefused if
+    server-side refusal fallback (Anthropic), and usage recording. Raises AIRefused if
     the request was still declined after the fallback.
     """
-    params.setdefault("model", MODEL)
-    response = client().beta.messages.create(betas=[FALLBACK_BETA], fallbacks="default", **params)
+    params.setdefault("model", model())
+    if provider() == "anthropic":
+        params.update(betas=[FALLBACK_BETA], fallbacks="default")
+    response = client().beta.messages.create(**params)
     usage = Usage()
     usage.add(response.usage)
     record_usage(feature, getattr(response, "model", params["model"]), usage)

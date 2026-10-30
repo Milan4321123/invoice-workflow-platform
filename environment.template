@@ -105,5 +105,12 @@ IP_RETENTION_DAYS=30
 # Without both settings everything runs in offline mode and no data leaves
 # the server. Before enabling: processor agreement with Anthropic (DSGVO).
 AI_FEATURES_ENABLED=false
+# anthropic (default) or gemini
+AI_PROVIDER=anthropic
 ANTHROPIC_API_KEY=
 # AI_MODEL=claude-opus-5-5
+GEMINI_API_KEY=
+# GEMINI_MODEL=gemini-2.5-flash
+# A free-tier Gemini key is only used in demo mode (Google may use free-tier
+# data to improve its products). Set true only for a paid Google Cloud project.
+GEMINI_PAID_TIER=false

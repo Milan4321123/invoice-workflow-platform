@@ -25,6 +25,15 @@ Model: `claude-opus-5-5` with server-side refusal fallback (`fallbacks: "default
 
 Live mode needs two switches on purpose: sending invoices to an AI provider is a decision under the DSGVO (processor agreement, third-country transfer), not something a stray API key in the environment should turn on.
 
+## Providers
+
+| `AI_PROVIDER` | Model (default) | Notes |
+|---|---|---|
+| `anthropic` (default) | `claude-opus-5-5` | Citations on statute passages, server-side refusal fallback |
+| `gemini` | `gemini-2.5-flash` (`GEMINI_MODEL`) | Through an adapter (`services/ai/gemini.py`) that speaks the same request shape, so features and guardrails are unchanged. No native citations: Q&A lists the retrieved passages as sources |
+
+**Free Gemini keys and real data:** on Google's unpaid tier, submitted content may be used to improve Google's products and may be read by reviewers. The platform therefore only uses a free-tier Gemini key in demo mode (fictional data). For real invoices: a paid Google Cloud project with a data processing agreement, then `GEMINI_PAID_TIER=true`. Free-tier quotas are small (a few requests per minute); the agent can need several calls per question, so a 503 "quota used up" is expected now and then.
+
 ## Guardrails
 
 | Risk | Guardrail | Tested in |
@@ -66,10 +75,14 @@ Caveat: the offline patterns were tuned on these five cases, so 100 % is optimis
 ## Turning live mode on
 
 ```bash
-# backend/.env
+# .env in the project root
 AI_FEATURES_ENABLED=true
 ANTHROPIC_API_KEY=...        # from console.anthropic.com
 # optional: AI_MODEL=claude-opus-5-5
+
+# or Gemini (free key: demo mode only)
+AI_PROVIDER=gemini
+GEMINI_API_KEY=...           # from aistudio.google.com
 ```
 
 Then run the eval live once to see the real numbers: `cd backend && .venv/bin/python -m evals.extraction_eval`.
