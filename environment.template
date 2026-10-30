@@ -98,3 +98,12 @@ NEXT_PUBLIC_PRIVACY_CONTACT=datenschutz@muster-bau.example
 
 # Days until IP addresses from approval links are removed (DSGVO storage limitation)
 IP_RETENTION_DAYS=30
+
+# =====================================================================
+# AI FEATURES (optional) - see docs/architecture/ai.md
+# =====================================================================
+# Without both settings everything runs in offline mode and no data leaves
+# the server. Before enabling: processor agreement with Anthropic (DSGVO).
+AI_FEATURES_ENABLED=false
+ANTHROPIC_API_KEY=
+# AI_MODEL=claude-opus-5-5

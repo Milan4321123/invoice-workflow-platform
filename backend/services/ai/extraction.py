@@ -209,8 +209,8 @@ def _extract_live(pdf: bytes) -> Dict[str, Any]:
 
 # Patterns for the text layer of typical German invoices
 PATTERNS = {
-    "rechnungsnummer": r"Rechnungs(?:nummer|-?nr\.?)\s*:?\s*([A-Z0-9][\w\-/]*)",
-    "rechnungsdatum": r"Rechnungsdatum\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})",
+    "rechnungsnummer": r"(?:Rechnungs(?:nummer|-?nr\.?)|Rechnung\s+Nr\.?|Rg\.?-?\s?Nr\.?|Beleg-?\s?Nr\.?)\s*:?\s*([A-Z0-9][\w\-/]*)",
+    "rechnungsdatum": r"(?:Rechnungsdatum|Datum)\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})",
     "leistungsdatum": r"Leistungs(?:datum|zeitraum)\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})",
     "faelligkeit": r"(?:fällig|zahlbar)\s+(?:am|bis)\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})",
     "lieferant_ust_id": r"(?:USt-?Id(?:Nr)?\.?|VAT ID)\s*:?\s*(DE\s?\d{3}\s?\d{3}\s?\d{3})",

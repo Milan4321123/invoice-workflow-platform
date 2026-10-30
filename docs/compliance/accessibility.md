@@ -14,6 +14,7 @@
 | Login | – | 0 | 23 |
 | Dashboard | – | 0 | – |
 | Invoice editor (incl. change history) | 2 (contrast, unreachable scroll area) | 0 | 32 |
+| AI assistant | – | 0 | 25 |
 
 ¹ – = not measured before the fixes.
 

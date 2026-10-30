@@ -27,6 +27,21 @@ Open http://localhost:3000 and log in as **`demo` / `Demo-2026!`**. Demo mode ru
 
 ![Dashboard with e-invoice badges and GoBD export](docs/images/dashboard.jpg)
 
+## AI features
+
+**AI proposes, rules verify, people decide.** Four features, built on Claude (`claude-opus-5-5`), all of them working offline without a key:
+
+| Feature | What it does |
+|---|---|
+| **AP assistant** (agent) | Answers "which Skonto expires this week?" or "what's wrong with Becker's invoice?" by calling the platform's own functions. It can *propose* a change; a person applies it through the normal GoBD-checked save. |
+| **Tax-rule Q&A** (RAG) | Answers from the statutes (UStG, UStDV, EStG, AO), stored verbatim from gesetze-im-internet.de, with a citation for every statement. |
+| **Field extraction** | Reads PDFs without e-invoice XML; every value comes with a confidence and the text it was read from, and is re-checked by the deterministic rules. |
+| **Correction request** | Drafts the e-mail asking a supplier for a corrected invoice. Never sent automatically. |
+
+Guardrails (no acting tools, prompt-injection handling, masked IBANs, step limits, usage and cost log without content, AI involvement in the GoBD log, EU AI Act labelling) and the extraction eval: [docs/architecture/ai.md](docs/architecture/ai.md).
+
+![AI field extraction with confidence and source text](docs/images/ai-extraction.jpg)
+
 ## Why this project exists
 
 German accounts payable is changing: e-invoice receiving has been mandatory since January 2025, issuing follows in 2027/2028, receipts must be kept for 8 instead of 10 years, and the EU's ViDA package makes EN 16931 e-invoicing mandatory for intra-EU trade from 2030. The research behind the features, with sources, is in [docs/research/market-and-regulation.md](docs/research/market-and-regulation.md).
@@ -43,7 +58,9 @@ backend/
   services/gobd.py                retention, lock after approval
   services/privacy_service.py     data subject requests, IP retention
   services/log_redaction.py       no e-mails or IBANs in logs
-  tests/                          230 tests, no network needed
+  services/ai/                    agent, RAG over statutes, extraction, correction drafts
+  evals/                          extraction accuracy on invoices with known values
+  tests/                          280+ tests, no network or API key needed
 frontend/src/
   components/compliance/          tax details, live check, change history
   i18n/                           typed DE/EN dictionaries
@@ -78,4 +95,4 @@ These are templates for an operating company; parts marked **[zu ergänzen]** de
 
 ## Roadmap
 
-DATEV booking export · KoSIT validator for XRechnung · roles (AP clerk, approver, privacy officer) · transactional audit logging via database trigger · VIES lookup for foreign VAT IDs.
+DATEV booking export · KoSIT validator for XRechnung · roles (AP clerk, approver, privacy officer) · transactional audit logging via database trigger · VIES lookup for foreign VAT IDs · live extraction eval on a held-out set of real (anonymised) invoices · hybrid retrieval once the knowledge base includes BMF letters.

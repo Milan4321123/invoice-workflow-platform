@@ -29,6 +29,7 @@ Stand: Oktober 2026.
 | Freigabe-Links | Signiert, befristet, einmal verwendbar; Verwendung mit IP-Adresse protokolliert | `services/email_service.py` |
 | Integrität | Änderungsprotokoll nur fortschreibbar, Hash-Kette mit Prüfroute | `services/audit.py`, Migration 006 |
 | Datenminimierung | Keine Rechnungsdatensätze in Logs; E-Mail-Adressen und IBANs werden in allen Logzeilen maskiert | `services/log_redaction.py` |
+| KI nur nach Freigabe | KI-Live-Modus nur mit `AI_FEATURES_ENABLED=true` und Schlüssel; sonst Offline-Modus ohne Datenübermittlung. Der Assistent sieht IBANs nur maskiert; Korrekturentwürfe erhalten nur die nötigen Angaben | `services/ai/`, `docs/architecture/ai.md` |
 | Speicherbegrenzung | IP-Adressen werden nach 30 Tagen automatisch entfernt | `services/privacy_service.py` |
 | Keine Drittanbieter im Browser | Schrift (next/font) und PDF.js-Worker werden selbst ausgeliefert; keine Analyse- oder Tracking-Dienste | `frontend/src/app/layout.tsx`, `PDFViewerClean.tsx` |
 | Sichere XML-Verarbeitung | E-Rechnungen werden mit `defusedxml` geparst (Schutz vor XXE) | `services/e_invoice.py` |
@@ -53,6 +54,7 @@ Stand: Oktober 2026.
 | Supabase | Datenbank, Dateiablage | Projekt-Region wählbar; **EU (Frankfurt) verwenden** | AVV (DPA) des Anbieters | **[AVV abschließen, Region prüfen]** |
 | Render | Hosting von API und Oberfläche | Region wählbar; **Frankfurt verwenden** | AVV (DPA) des Anbieters | **[AVV abschließen, Region prüfen]** |
 | SendGrid (Twilio Inc.) | E-Mail-Versand | USA | AVV; EU-US Data Privacy Framework bzw. Standardvertragsklauseln (Art. 45/46) | **[AVV abschließen; EU-Anbieter als Alternative prüfen]** |
+| Anthropic (nur wenn KI-Live-Modus aktiv) | KI-Funktionen: Feldauslesung, Assistent, Fragen zu Steuerregeln, Korrekturentwürfe | USA | AVV (Data Processing Addendum); EU-US Data Privacy Framework bzw. Standardvertragsklauseln | **[vor Aktivierung: AVV, Transfergrundlage, Information der Beschäftigten]** |
 
 Die Anwendung kann E-Mails statt zu versenden in einen lokalen Ordner schreiben (`EMAIL_DEMO_MODE`). Das ist nützlich für Tests, ohne echte Adressen an einen Versanddienst zu geben.
 
@@ -64,6 +66,7 @@ Die Anwendung kann E-Mails statt zu versenden in einen lokalen Ordner schreiben 
 | Änderungsprotokoll | wie die zugehörigen Rechnungen | Fristablauf | nur fortschreibbar; Archivierung/Löschung nach Fristende **[Prozess festlegen]** |
 | Fälschlich hochgeladene Dateien | sofort | Feststellung | Löschen im Dashboard, wird protokolliert |
 | IP-Adressen (Freigabe-Links, Sicherheitsereignisse) | 30 Tage | täglich automatisch | `remove_old_ip_addresses` |
+| KI-Nutzungsprotokoll (`ai_requests`) | **[z. B. 1 Jahr]** | Frist | enthält nur Funktion, Modell, Tokens, Kosten, keine Inhalte |
 | E-Mail-Versandprotokoll | **[z. B. 2 Jahre]** | Löschantrag oder Frist | Pseudonymisierung über Datenschutz-Anfrage |
 | Benutzerkonten | Austritt | Antrag | Deaktivierung, Name und E-Mail entfernt; Benutzername bleibt im Änderungsprotokoll |
 | Server-Logs | **[Aufbewahrung beim Hoster einstellen, z. B. 14 Tage]** | Frist | E-Mail-Adressen und IBANs sind bereits maskiert |

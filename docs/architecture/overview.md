@@ -59,5 +59,7 @@ flowchart LR
 
 ## Testing
 
-- `backend/tests`: 230 tests, run in CI on every push and PR. No network, no Supabase: credentials are blanked before the app is imported.
+- `backend/tests`: 280+ tests, run in CI on every push and PR. No network, no Supabase: credentials are blanked before the app is imported.
 - Frontend: lint, TypeScript and production build in CI; accessibility checked with axe-core against the running demo (see `docs/compliance/accessibility.md`).
+
+The AI features (agent, RAG, extraction, correction drafts) and their guardrails are described in [ai.md](ai.md).
