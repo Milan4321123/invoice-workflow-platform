@@ -185,9 +185,8 @@ async def get_invoices_with_skonto_due(days_ahead: int = 7):
 @router.delete("/invoices/all")
 async def delete_all_invoices():
     """
-    Delete ALL invoices with comprehensive cleanup.
-    ⚠️ WARNING: This will permanently delete all invoices in the system!
-    Removes all invoice records, associated Skonto data, and file storage.
+    Delete every invoice that is still an untouched upload, with its file.
+    Invoices that entered the workflow are records under GoBD retention and stay.
     """
     
     if not db_service.is_available:
@@ -209,11 +208,12 @@ async def delete_all_invoices():
                 "status": "success",
                 "summary": {
                     "total_deleted": deletion_summary.get("total_deleted", 0),
+                    "kept_for_retention": deletion_summary.get("kept_for_retention", 0),
                     "skonto_data_cleaned": deletion_summary.get("skonto_data_cleaned", 0),
                     "storage_files_cleaned": deletion_summary.get("storage_files_cleaned", 0),
                     "failed_deletions": deletion_summary.get("failed_deletions", 0)
                 },
-                "warning": "All invoice data has been permanently removed from the system"
+                "warning": "Invoices under the GoBD retention period were kept"
             }
         else:
             raise Exception(result["error"])
@@ -262,6 +262,8 @@ async def delete_invoice(invoice_id: str = Path(..., description="The invoice ID
     try:
         # Use enhanced database service method with comprehensive cleanup
         result = db_service.delete_invoice(invoice_id)
+        if result.get("locked"):
+            raise HTTPException(status_code=409, detail=result["error"])
         
         if result["success"]:
             deletion_summary = result.get("deletion_summary", {})
@@ -348,6 +350,13 @@ async def check_invoice_compliance(
             ))
 
     return {"invoice_id": invoice_id, **summarize(findings)}
+
+@router.get("/invoices/{invoice_id}/audit-log")
+async def get_invoice_audit_log(invoice_id: str = Path(..., description="The invoice ID")):
+    """Every change to this invoice: who, when, which field, old and new value"""
+    if not db_service.is_available:
+        raise HTTPException(status_code=503, detail="Database service not available")
+    return {"invoice_id": invoice_id, "entries": db_service.audit.entries_for(invoice_id)}
 
 @router.get("/invoices/{invoice_id}/editor")
 async def get_invoice_editor_data(invoice_id: str = Path(..., description="The invoice ID")):
@@ -451,11 +460,15 @@ async def update_invoice_editor_data(
         # Update invoice fields first
         if update_data:
             field_result = db_service.update_invoice(invoice_id, update_data)
+            if field_result.get("locked"):
+                raise HTTPException(status_code=409, detail=field_result["error"])
             if not field_result["success"]:
                 raise HTTPException(status_code=500, detail=f"Failed to update invoice fields: {field_result['error']}")
         
         # Update status to "in Bearbeitung" stage (edited + under_review)
         status_result = db_service.update_invoice_to_editing_stage(invoice_id)
+        if status_result.get("locked"):
+            raise HTTPException(status_code=409, detail=status_result["error"])
         if not status_result["success"]:
             raise HTTPException(status_code=500, detail=f"Failed to update invoice status: {status_result['error']}")
         
@@ -794,6 +807,8 @@ async def update_invoice(
         
         # Update invoice in database
         result = db_service.update_invoice(invoice_id, update_data)
+        if result.get("locked"):
+            raise HTTPException(status_code=409, detail=result["error"])
         
         if result["success"]:
             logger.info(f"✅ Invoice {invoice_id} updated successfully")
