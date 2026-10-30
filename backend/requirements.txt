@@ -30,3 +30,7 @@ cryptography==43.0.3
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
 python-jose[cryptography]==3.3.0
+
+# E-invoices (XRechnung / ZUGFeRD): read the XML embedded in PDFs, parse untrusted XML safely
+pypdf==5.1.0
+defusedxml==0.7.1
