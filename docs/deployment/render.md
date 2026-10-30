@@ -18,7 +18,7 @@ First, set up your Supabase database:
 
 1. Go to your Supabase project dashboard
 2. Navigate to SQL Editor
-3. Run the complete SQL setup from `COMPLETE_SUPABASE_SETUP.sql`
+3. Run the complete SQL setup from [`COMPLETE_SUPABASE_SETUP.sql`](../../COMPLETE_SUPABASE_SETUP.sql)
 4. Create a storage bucket named `invoices` in Supabase Storage
 
 ### 1.2 Environment Variables

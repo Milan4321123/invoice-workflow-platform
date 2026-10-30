@@ -195,7 +195,7 @@ ocr-invoice-processor/
 │
 ├── 📖 Documentation
 │   ├── README.md              # This file
-│   └── QUICK_REFERENCE.md     # Quick help guide
+│   └── docs/                  # Setup, deployment and architecture guides
 │
 ├── 🎨 Frontend Application
 │   └── frontend/              # React/Next.js web interface
