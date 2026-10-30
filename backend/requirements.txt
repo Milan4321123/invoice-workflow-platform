@@ -2,11 +2,11 @@ fastapi==0.104.1
 uvicorn==0.24.0
 slowapi==0.1.9
 python-multipart==0.0.6
-supabase==2.0.2
+supabase==2.11.0
 python-dotenv==1.0.0
 pytest==7.4.3
 pytest-asyncio==0.21.1
-httpx>=0.24.0,<0.25.0
+httpx>=0.25,<0.28
 pytest-mock==3.12.0
 
 # Additional dependencies for data validation
@@ -34,3 +34,6 @@ python-jose[cryptography]==3.3.0
 # E-invoices (XRechnung / ZUGFeRD): read the XML embedded in PDFs, parse untrusted XML safely
 pypdf==5.1.0
 defusedxml==0.7.1
+
+# AI features (Claude API). 0.x line: 1.x needs httpx2/anyio 4, which FastAPI 0.104 doesn't allow
+anthropic==0.125.0
