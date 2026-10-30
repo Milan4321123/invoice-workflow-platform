@@ -142,7 +142,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
     except HTTPException:
         return {"valid": False}
 
-@router.post("/initialize")
+@router.post("/initialize", dependencies=[Depends(get_current_user)])
 async def initialize_auth_system():
     """Initialize authentication system with default admin user"""
     try:

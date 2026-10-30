@@ -2,7 +2,7 @@
 Clean Invoice Management API
 Handles upload, storage, editing, and workflow without OCR dependencies.
 """
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -186,18 +186,25 @@ from api.routes import (
     auth
 )
 
+from api.dependencies.auth import require_auth
+
+# Every router below holds invoice data, so it requires a logged-in user.
+# The exceptions decide per route: login and health checks, and the links in
+# approval/Skonto e-mails, which carry their own signed, single-use token.
+logged_in = [Depends(require_auth)]
+
 # Register routes
 app.include_router(auth.router, tags=["authentication"])
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(upload.router, prefix="/api", tags=["upload"])
-app.include_router(invoices.router, prefix="/api", tags=["invoices"])
-app.include_router(dropdowns.router, prefix="/api", tags=["dropdowns"])
-app.include_router(approval.router, prefix="/api/approval", tags=["approval"])
+app.include_router(invoices.router, prefix="/api", tags=["invoices"], dependencies=logged_in)
+app.include_router(dropdowns.router, prefix="/api", tags=["dropdowns"], dependencies=logged_in)
+app.include_router(approval.router, prefix="/api/approval", tags=["approval"], dependencies=logged_in)
 app.include_router(approval_workflow.router, prefix="/api", tags=["workflow"])
 app.include_router(email_workflow.router, prefix="/api", tags=["email"])
-app.include_router(reports.router, prefix="/api", tags=["reports"])
-app.include_router(skonto_dashboard.router, prefix="/api", tags=["skonto"])  # Added missing skonto dashboard router
-app.include_router(folder_watcher.router, prefix="/api/folder-watcher", tags=["folder-watcher"])
+app.include_router(reports.router, prefix="/api", tags=["reports"], dependencies=logged_in)
+app.include_router(skonto_dashboard.router, prefix="/api", tags=["skonto"], dependencies=logged_in)
+app.include_router(folder_watcher.router, prefix="/api/folder-watcher", tags=["folder-watcher"], dependencies=logged_in)
 # Removed multi_layer_approval.router - using simple single Bauleiter approval only
 
 @app.get("/")

@@ -13,6 +13,7 @@ from pydantic import BaseModel, EmailStr
 from fastapi.responses import HTMLResponse
 
 from services.database import db_service
+from api.dependencies.auth import require_auth
 from services.email_service import email_service
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ class EmailResponse(BaseModel):
     message_id: Optional[str] = None
     timestamp: str
 
-@router.post("/email/editor-notification", response_model=EmailResponse)
+@router.post("/email/editor-notification", response_model=EmailResponse, dependencies=[Depends(require_auth)])
 async def send_editor_notification(
     request: EditorNotificationRequest,
     http_request: Request
@@ -122,7 +123,7 @@ async def send_editor_notification(
             pass
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.post("/email/dropdown-change-notification", response_model=EmailResponse)
+@router.post("/email/dropdown-change-notification", response_model=EmailResponse, dependencies=[Depends(require_auth)])
 async def send_dropdown_change_notification(
     request: DropdownChangeNotificationRequest,
     http_request: Request
@@ -177,7 +178,7 @@ async def send_dropdown_change_notification(
         logger.error(f"Error sending dropdown change notification: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.post("/email/bauleiter-approval", response_model=EmailResponse)
+@router.post("/email/bauleiter-approval", response_model=EmailResponse, dependencies=[Depends(require_auth)])
 async def send_bauleiter_approval_request(
     request: BauleiterApprovalRequest,
     http_request: Request
@@ -350,7 +351,7 @@ async def process_approval_action(
         
         return _create_error_html("Ein Fehler ist aufgetreten. Bitte kontaktieren Sie den Administrator.")
 
-@router.get("/email/audit/{invoice_id}")
+@router.get("/email/audit/{invoice_id}", dependencies=[Depends(require_auth)])
 async def get_email_audit_log(
     invoice_id: str,
     limit: int = Query(default=10, ge=1, le=100)

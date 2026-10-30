@@ -1,10 +1,11 @@
 """Health and debug route handlers"""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 import os
 import time
 import tempfile
 from datetime import datetime
 from services.database import db_service
+from api.dependencies.auth import require_auth
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
 
-@router.get("/system-health")
+@router.get("/system-health", dependencies=[Depends(require_auth)])
 async def system_health():
     """Comprehensive system health check endpoint"""
     start_time = time.time()
