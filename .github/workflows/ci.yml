@@ -2,49 +2,49 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  backend-tests:
+  backend:
+    name: Backend tests
     runs-on: ubuntu-latest
-    
+    defaults:
+      run:
+        working-directory: backend
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install dependencies
-      run: |
-        cd backend
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install pytest
-    - name: Test with pytest
-      run: |
-        cd backend
-        if [ -d tests ]; then pytest; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
 
-  frontend-tests:
+  frontend:
+    name: Frontend lint, types and build
     runs-on: ubuntu-latest
-    
+    defaults:
+      run:
+        working-directory: frontend
     steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-    - name: Install dependencies
-      run: |
-        cd frontend
-        if [ -f package.json ]; then npm ci; fi
-    - name: Lint
-      run: |
-        cd frontend
-        if [ -f package.json ]; then npm run lint; fi
-    - name: Build
-      run: |
-        cd frontend
-        if [ -f package.json ]; then npm run build; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
