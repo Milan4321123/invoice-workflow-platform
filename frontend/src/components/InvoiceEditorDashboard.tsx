@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '@/config/api';
 import PDFViewer from './PDFViewerClean';
 import CleanInvoiceForm, { GermanInvoiceFields } from './CleanInvoiceForm';
-import { FileText, Eye, Edit3, AlertTriangle, CheckCircle, Monitor, FileInput, FileCode2, BadgeCheck } from 'lucide-react';
+import { FileText, Eye, Edit3, AlertTriangle, CheckCircle, Monitor, FileInput, FileCode2, BadgeCheck, Lock } from 'lucide-react';
 import { authFetch } from '@/lib/authFetch';
+import { apiErrorMessage } from '@/lib/apiError';
 
 interface InvoiceEditorDashboardProps {
   invoiceId: string;
@@ -25,6 +26,8 @@ export default function InvoiceEditorDashboard({
   const [filename, setFilename] = useState<string>(initialData?.filename || '');
   const [mimeType, setMimeType] = useState<string | null>(null);
   const [eRechnungFormat, setERechnungFormat] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [retentionUntil, setRetentionUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(!initialData);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
@@ -58,6 +61,8 @@ export default function InvoiceEditorDashboard({
       setFilename(data.filename || `Rechnung ${invoiceId}`);
       setMimeType(data.mimeType || null);
       setERechnungFormat(data.eRechnungFormat || null);
+      setLocked(Boolean(data.locked));
+      setRetentionUntil(data.retentionUntil || null);
     } catch (err) {
       console.error('Error loading invoice data:', err);
       setError(err instanceof Error ? err.message : 'Rechnungsdaten konnten nicht geladen werden');
@@ -106,7 +111,7 @@ export default function InvoiceEditorDashboard({
       });
 
       if (!response.ok) {
-        throw new Error(`Speichern fehlgeschlagen: ${response.statusText}`);
+        throw new Error(await apiErrorMessage(response, `Speichern fehlgeschlagen: ${response.statusText}`));
       }
 
       const result = await response.json();
@@ -187,7 +192,7 @@ export default function InvoiceEditorDashboard({
       });
 
       if (!response.ok) {
-        throw new Error(`Abschluss fehlgeschlagen: ${response.statusText}`);
+        throw new Error(await apiErrorMessage(response, `Abschluss fehlgeschlagen: ${response.statusText}`));
       }
 
       const result = await response.json();
@@ -310,6 +315,16 @@ export default function InvoiceEditorDashboard({
 
         {/* Form Section - Clean, Focused Editing */}
         <div className={`lg:flex-1 lg:w-1/2 ${mobileView === 'form' ? 'flex' : 'hidden lg:flex'} flex-col bg-white`}>
+          {locked && (
+            <div role="note" className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm text-amber-900">
+              <Lock className="h-5 w-5 shrink-0 mt-0.5" aria-hidden="true" />
+              <p>
+                <span className="font-semibold">Freigegeben und festgeschrieben.</span>{' '}
+                Buchungsrelevante Angaben können nicht mehr geändert werden (GoBD). Aufbewahrung bis{' '}
+                {retentionUntil ? new Date(retentionUntil).toLocaleDateString('de-DE') : 'Fristende'}.
+              </p>
+            </div>
+          )}
           {eRechnungFormat && (
             <div className="flex items-start gap-3 border-b border-green-200 bg-green-50 px-6 py-3 text-sm text-green-800">
               <BadgeCheck className="h-5 w-5 shrink-0 mt-0.5" aria-hidden="true" />

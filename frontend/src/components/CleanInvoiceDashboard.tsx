@@ -16,13 +16,15 @@ import {
   Clock,
   RefreshCw,
   Search,
-  X
+  X,
+  Download
 } from 'lucide-react'
 import FolderWatcherWidget from './FolderWatcherWidget'
 import DeleteConfirmationDialog from './DeleteConfirmationDialog'
 import InvoiceMobileCard from './InvoiceMobileCard'
 import { buildApiUrl, API_CONFIG } from '@/config/api'
 import { authFetch } from '@/lib/authFetch';
+import { apiErrorMessage } from '@/lib/apiError';
 
 interface CleanInvoice {
   id: string
@@ -66,6 +68,7 @@ export default function CleanInvoiceDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [exportYear, setExportYear] = useState(new Date().getFullYear())
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean
     invoiceId: string
@@ -115,7 +118,7 @@ export default function CleanInvoiceDashboard() {
       })
 
       if (!response.ok) {
-        throw new Error('Rechnung konnte nicht gelöscht werden')
+        throw new Error(await apiErrorMessage(response, 'Rechnung konnte nicht gelöscht werden'))
       }
 
       // Parse the enhanced deletion response
@@ -158,6 +161,24 @@ export default function CleanInvoiceDashboard() {
     }
   }
 
+  // ZIP of the year's invoices and change log for a tax audit (§147 Abs. 6 AO)
+  const exportForTaxAudit = async () => {
+    try {
+      const response = await authFetch(buildApiUrl(`/api/exports/gobd?year=${exportYear}`))
+      if (!response.ok) {
+        throw new Error(await apiErrorMessage(response, 'Export fehlgeschlagen'))
+      }
+      const url = URL.createObjectURL(await response.blob())
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `gobd-export-eingangsrechnungen-${exportYear}.zip`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Export fehlgeschlagen')
+    }
+  }
+
   const deleteAllInvoices = async () => {
     try {
       toast.loading('Alle Rechnungen werden gelöscht...', { id: 'delete-all' })
@@ -167,16 +188,19 @@ export default function CleanInvoiceDashboard() {
       })
 
       if (!response.ok) {
-        throw new Error('Rechnungen konnten nicht gelöscht werden')
+        throw new Error(await apiErrorMessage(response, 'Rechnungen konnten nicht gelöscht werden'))
       }
 
       const result = await response.json()
       
       // Create comprehensive success message
       const summary = result.summary || {}
-      let successMessage = `✅ Alle Rechnungen erfolgreich gelöscht!\n\n`
+      let successMessage = `✅ Nicht bearbeitete Uploads gelöscht\n\n`
       successMessage += `📊 Zusammenfassung:\n`
       successMessage += `• ${summary.total_deleted || 0} Rechnungen gelöscht\n`
+      if (summary.kept_for_retention > 0) {
+        successMessage += `• ${summary.kept_for_retention} Belege bleiben erhalten (Aufbewahrungspflicht, GoBD)\n`
+      }
       successMessage += `• ${summary.skonto_data_cleaned || 0} Skonto-Datensätze bereinigt\n`
       successMessage += `• ${summary.storage_files_cleaned || 0} Dateien aus Speicher entfernt`
       
@@ -553,6 +577,28 @@ export default function CleanInvoiceDashboard() {
                 <span>Control Panel</span>
               </Link>
               
+              <div className="flex items-center rounded-xl bg-white shadow-lg overflow-hidden">
+                <label htmlFor="gobd-export-year" className="sr-only">Jahr für den GoBD-Export</label>
+                <select
+                  id="gobd-export-year"
+                  value={exportYear}
+                  onChange={(e) => setExportYear(Number(e.target.value))}
+                  className="px-2 py-2 text-sm text-gray-700 border-r border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Array.from({ length: 9 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={exportForTaxAudit}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  title="Rechnungen und Änderungsprotokoll für die Betriebsprüfung exportieren (§147 Abs. 6 AO)"
+                >
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  <span>GoBD-Export</span>
+                </button>
+              </div>
+
               <button
                 onClick={fetchInvoices}
                 className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-105 shadow-lg"
@@ -1025,16 +1071,19 @@ export default function CleanInvoiceDashboard() {
                       </h3>
                       <div className="mt-2">
                         <p className="text-sm text-gray-500">
-                          ⚠️ <strong>WARNUNG:</strong> Diese Aktion löscht <strong>ALLE {invoices.length} Rechnungen</strong> dauerhaft aus dem System!
+                          ⚠️ <strong>WARNUNG:</strong> Diese Aktion löscht alle Rechnungen, die noch nicht bearbeitet wurden, dauerhaft.
                         </p>
                         <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
                           <p className="text-sm text-red-700 font-medium">Diese Aktion wird:</p>
                           <ul className="mt-2 text-sm text-red-600 list-disc list-inside space-y-1">
-                            <li>Alle Rechnungsdatensätze löschen</li>
-                            <li>Alle Skonto-Daten bereinigen</li>
-                            <li>Alle Dateien aus dem Speicher entfernen</li>
+                            <li>Unbearbeitete Uploads samt Datei löschen</li>
+                            <li>Jede Löschung im Änderungsprotokoll festhalten</li>
                             <li><strong>Kann NICHT rückgängig gemacht werden!</strong></li>
                           </ul>
+                          <p className="mt-2 text-sm text-red-700">
+                            Rechnungen, die bereits bearbeitet oder freigegeben wurden, sind Buchungsbelege und bleiben
+                            bis zum Ende der Aufbewahrungsfrist erhalten (§147 AO, GoBD).
+                          </p>
                         </div>
                         <div className="mt-4">
                           <p className="text-sm text-gray-600">

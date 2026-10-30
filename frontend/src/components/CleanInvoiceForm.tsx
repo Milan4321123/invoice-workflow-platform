@@ -7,6 +7,7 @@ import { getApiUrl } from '@/config/api';
 import { authFetch } from '@/lib/authFetch';
 import TaxDetailsSection from './compliance/TaxDetailsSection';
 import ComplianceChecklist from './compliance/ComplianceChecklist';
+import AuditHistory from './compliance/AuditHistory';
 
 // German invoice field types
 export interface GermanInvoiceFields {
@@ -790,6 +791,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
 
         <TaxDetailsSection fields={fields} onFieldChange={onFieldChange} />
         {invoiceId && <ComplianceChecklist invoiceId={invoiceId} fields={fields} />}
+        {invoiceId && <AuditHistory invoiceId={invoiceId} />}
 
         {/* Discard Changes Option */}
         {pendingChanges.length > 0 && (

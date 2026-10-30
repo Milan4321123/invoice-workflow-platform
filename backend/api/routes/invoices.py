@@ -11,6 +11,7 @@ from services.dropdown_labels import with_labels
 from services.email_service import email_service
 from api.dependencies.auth import require_auth
 from services.invoice_compliance import ERROR, Finding, check_invoice, summarize
+from services.gobd import LOCKED_STATUSES, retention_until
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -400,6 +401,9 @@ async def get_invoice_editor_data(invoice_id: str = Path(..., description="The i
             "filename": invoice_data.get("file_name", f"Invoice {invoice_id}"),
             "mimeType": invoice_data.get("mime_type"),
             "eRechnungFormat": invoice_data.get("e_rechnung_format"),
+            "status": invoice_data.get("status"),
+            "locked": invoice_data.get("status") in LOCKED_STATUSES,
+            "retentionUntil": retention_until(invoice_data).isoformat(),
         }
         
         return editor_data
