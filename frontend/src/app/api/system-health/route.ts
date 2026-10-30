@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { forwardAuth, unauthorized } from '@/lib/backendProxy';
 import { getApiUrl } from '@/config/api';
 
 export async function GET(request: NextRequest) {
@@ -10,9 +11,13 @@ export async function GET(request: NextRequest) {
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
+        ...forwardAuth(request),
         'Content-Type': 'application/json',
       },
     });
+
+    const denied = unauthorized(response);
+    if (denied) return denied;
     
     if (!response.ok) {
       throw new Error(`Backend responded with ${response.status}: ${response.statusText}`);

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, Filter, Download, RefreshCw, Mail, ThumbsUp, ThumbsDown, Settings, Play, Pause, Zap, Timer } from 'lucide-react';
+import { authFetch } from '@/lib/authFetch';
 
 interface SkontoMetrics {
   totalInvoices: number;
@@ -84,9 +85,9 @@ export default function PrufberichtPage() {
       // Fetch real data from Skonto API endpoints
       console.log('📡 Making API calls...');
       const [metricsResponse, opportunitiesResponse, schedulerResponse] = await Promise.all([
-        fetch('/api/skonto/dashboard/summary'),
-        fetch('/api/skonto/dashboard/opportunities?urgency=all&limit=200'), // Max limit is 200
-        fetch('/api/skonto/scheduler/status')
+        authFetch('/api/skonto/dashboard/summary'),
+        authFetch('/api/skonto/dashboard/opportunities?urgency=all&limit=200'), // Max limit is 200
+        authFetch('/api/skonto/scheduler/status')
       ]);
       
       console.log('📊 API responses received:', {
@@ -184,7 +185,7 @@ export default function PrufberichtPage() {
   const handleSendReminder = async (invoiceId: string) => {
     try {
       setActionLoading(invoiceId);
-      const response = await fetch(`/api/invoices/${invoiceId}/send-skonto-reminder`, {
+      const response = await authFetch(`/api/invoices/${invoiceId}/send-skonto-reminder`, {
         method: 'POST',
       });
       
@@ -210,7 +211,7 @@ export default function PrufberichtPage() {
   const handleMarkAsTaken = async (invoiceId: string) => {
     try {
       setActionLoading(invoiceId);
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
+      const response = await authFetch(`/api/invoices/${invoiceId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -238,7 +239,7 @@ export default function PrufberichtPage() {
   const handleMarkAsMissed = async (invoiceId: string) => {
     try {
       setActionLoading(invoiceId);
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
+      const response = await authFetch(`/api/invoices/${invoiceId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

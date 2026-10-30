@@ -5,6 +5,7 @@ import { getApiUrl } from '@/config/api';
 import { useParams, useRouter } from 'next/navigation';
 import InvoiceEditorDashboard from '@/components/InvoiceEditorDashboard';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { authFetch } from '@/lib/authFetch';
 
 export default function InvoiceEditorPage() {
   const params = useParams();
@@ -27,7 +28,7 @@ export default function InvoiceEditorPage() {
       try {
         // Use the existing editor endpoint to validate and fetch invoice data
         const apiUrl = getApiUrl();
-        const response = await fetch(`${apiUrl}/api/invoices/${invoiceId}/editor`);
+        const response = await authFetch(`${apiUrl}/api/invoices/${invoiceId}/editor`);
         
         if (response.ok) {
           setIsValid(true);

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { SearchableDropdown } from './SearchableDropdown';
 import { dropdownService, DropdownOption } from '@/services/dropdown';
 import { getApiUrl } from '@/config/api';
+import { authFetch } from '@/lib/authFetch';
 
 // German invoice field types
 export interface GermanInvoiceFields {
@@ -302,7 +303,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
     try {
       console.log('📧 Making email request to /api/email/dropdown-change-notification');
       
-      const response = await fetch(`${getApiUrl()}/api/email/dropdown-change-notification`, {
+      const response = await authFetch(`${getApiUrl()}/api/email/dropdown-change-notification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

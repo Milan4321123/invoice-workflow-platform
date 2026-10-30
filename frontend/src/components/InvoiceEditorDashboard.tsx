@@ -5,6 +5,7 @@ import { getApiUrl } from '@/config/api';
 import PDFViewer from './PDFViewerClean';
 import CleanInvoiceForm, { GermanInvoiceFields } from './CleanInvoiceForm';
 import { FileText, Eye, Edit3, AlertTriangle, CheckCircle, Monitor, FileInput } from 'lucide-react';
+import { authFetch } from '@/lib/authFetch';
 
 interface InvoiceEditorDashboardProps {
   invoiceId: string;
@@ -44,7 +45,7 @@ export default function InvoiceEditorDashboard({
 
       // API call to load invoice data
       const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/api/invoices/${invoiceId}/editor`);
+      const response = await authFetch(`${apiUrl}/api/invoices/${invoiceId}/editor`);
       if (!response.ok) {
         throw new Error(`Rechnung konnte nicht geladen werden: ${response.statusText}`);
       }
@@ -89,7 +90,7 @@ export default function InvoiceEditorDashboard({
         ]
       };
 
-      const response = await fetch(`${apiUrl}/api/invoices/${invoiceId}/editor`, {
+      const response = await authFetch(`${apiUrl}/api/invoices/${invoiceId}/editor`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ export default function InvoiceEditorDashboard({
         }
       };
 
-      const response = await fetch(`${apiUrl}/api/invoices/${invoiceId}/complete`, {
+      const response = await authFetch(`${apiUrl}/api/invoices/${invoiceId}/complete`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

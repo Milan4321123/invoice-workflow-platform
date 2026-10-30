@@ -22,6 +22,7 @@ import FolderWatcherWidget from './FolderWatcherWidget'
 import DeleteConfirmationDialog from './DeleteConfirmationDialog'
 import InvoiceMobileCard from './InvoiceMobileCard'
 import { buildApiUrl, API_CONFIG } from '@/config/api'
+import { authFetch } from '@/lib/authFetch';
 
 interface CleanInvoice {
   id: string
@@ -89,7 +90,7 @@ export default function CleanInvoiceDashboard() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.INVOICES.BASE))
+      const response = await authFetch(buildApiUrl(API_CONFIG.ENDPOINTS.INVOICES.BASE))
       
       if (!response.ok) {
         throw new Error(`Failed to fetch invoices: ${response.statusText}`)
@@ -108,7 +109,7 @@ export default function CleanInvoiceDashboard() {
 
   const deleteInvoice = async (id: string, filename: string) => {
     try {
-      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.INVOICES.DELETE(id)), {
+      const response = await authFetch(buildApiUrl(API_CONFIG.ENDPOINTS.INVOICES.DELETE(id)), {
         method: 'DELETE'
       })
 
@@ -160,7 +161,7 @@ export default function CleanInvoiceDashboard() {
     try {
       toast.loading('Alle Rechnungen werden gelöscht...', { id: 'delete-all' })
       
-      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.INVOICES.DELETE_ALL), {
+      const response = await authFetch(buildApiUrl(API_CONFIG.ENDPOINTS.INVOICES.DELETE_ALL), {
         method: 'DELETE'
       })
 
@@ -252,7 +253,7 @@ export default function CleanInvoiceDashboard() {
         ]
       };
 
-      const response = await fetch(buildApiUrl(`/api/invoices/${invoice.id}/send-to-bauleiter`), {
+      const response = await authFetch(buildApiUrl(`/api/invoices/${invoice.id}/send-to-bauleiter`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

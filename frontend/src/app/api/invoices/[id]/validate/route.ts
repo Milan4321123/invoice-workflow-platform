@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { forwardAuth, unauthorized } from '@/lib/backendProxy';
 import { getApiUrl } from '@/config/api';
 
 export async function GET(
@@ -23,10 +24,13 @@ export async function GET(
     const response = await fetch(`${backendUrl}/api/invoices/${invoiceId}/validate`, {
       method: 'GET',
       headers: {
+        ...forwardAuth(request),
         'Content-Type': 'application/json',
-        // TODO: Add authentication headers
       },
     });
+
+    const denied = unauthorized(response);
+    if (denied) return denied;
 
     if (response.status === 404) {
       return NextResponse.json(

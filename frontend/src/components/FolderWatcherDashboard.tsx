@@ -19,6 +19,7 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline'
+import { authFetch } from '@/lib/authFetch';
 
 // Types for Folder Watcher
 interface WatchFolder {
@@ -81,7 +82,7 @@ export function FolderWatcherDashboard() {
   const fetchWatcherStatus = async () => {
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/status`)
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/status`)
       if (response.ok) {
         const data = await response.json()
         setWatcherStatus(data)
@@ -97,7 +98,7 @@ export function FolderWatcherDashboard() {
   const fetchWatchFolders = async () => {
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/folders`)
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/folders`)
       if (response.ok) {
         const data = await response.json()
         setWatchFolders(data)
@@ -113,7 +114,7 @@ export function FolderWatcherDashboard() {
   const fetchStatistics = async () => {
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/statistics`)
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/statistics`)
       if (response.ok) {
         const data = await response.json()
         setStatistics(data)
@@ -141,7 +142,7 @@ export function FolderWatcherDashboard() {
     setActionLoading('start')
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/start`, {
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/start`, {
         method: 'POST'
       })
       
@@ -165,7 +166,7 @@ export function FolderWatcherDashboard() {
     setActionLoading('stop')
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/stop`, {
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/stop`, {
         method: 'POST'
       })
       
@@ -194,7 +195,7 @@ export function FolderWatcherDashboard() {
     setActionLoading('add')
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/folders`, {
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/folders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -236,7 +237,7 @@ export function FolderWatcherDashboard() {
     setActionLoading(`remove-${folderId}`)
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/folders/${folderId}`, {
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/folders/${folderId}`, {
         method: 'DELETE'
       })
 
@@ -262,7 +263,7 @@ export function FolderWatcherDashboard() {
 
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/folders/${folderId}/${action}`, {
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/folders/${folderId}/${action}`, {
         method: 'POST'
       })
 

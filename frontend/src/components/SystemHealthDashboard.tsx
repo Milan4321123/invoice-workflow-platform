@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '@/lib/authFetch';
 
 interface HealthComponent {
   status: 'healthy' | 'degraded' | 'error';
@@ -57,7 +58,7 @@ export default function SystemHealthDashboard() {
       setError(null);
       
       // Use the Next.js API route as a proxy to avoid CORS issues
-      const response = await fetch('/api/system-health');
+      const response = await authFetch('/api/system-health');
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

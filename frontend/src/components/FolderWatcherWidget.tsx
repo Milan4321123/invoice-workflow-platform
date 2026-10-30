@@ -16,6 +16,7 @@ import {
   EyeIcon,
   TrashIcon
 } from '@heroicons/react/24/outline';
+import { authFetch } from '@/lib/authFetch';
 
 interface WatcherStatus {
   status: 'stopped' | 'running' | 'error' | 'starting' | 'stopping';
@@ -121,7 +122,7 @@ export default function FolderWatcherWidget() {
   const fetchStatus = async () => {
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/status`);
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/status`);
       if (response.ok) {
         const data = await response.json();
         setStatus(data);
@@ -137,7 +138,7 @@ export default function FolderWatcherWidget() {
   const fetchNotifications = async () => {
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/notifications?limit=5`);
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/notifications?limit=5`);
       if (response.ok) {
         const data = await response.json();
         setNotifications(data.notifications || []);
@@ -151,7 +152,7 @@ export default function FolderWatcherWidget() {
   const clearNotifications = async () => {
     try {
       const apiUrl = getApiUrl()
-      const response = await fetch(`${apiUrl}/api/folder-watcher/notifications`, {
+      const response = await authFetch(`${apiUrl}/api/folder-watcher/notifications`, {
         method: 'DELETE'
       });
       if (response.ok) {

@@ -4,6 +4,7 @@
  */
 
 import { API_CONFIG, buildApiUrl } from '@/config/api';
+import { authFetch } from '@/lib/authFetch';
 
 export interface DropdownOption {
   value: string;
@@ -39,7 +40,7 @@ class DropdownService {
    * Get dropdown options for a specific field
    */
   async getDropdownOptions(fieldName: string): Promise<DropdownResponse> {
-    const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.DROPDOWNS.BY_FIELD(fieldName)));
+    const response = await authFetch(buildApiUrl(API_CONFIG.ENDPOINTS.DROPDOWNS.BY_FIELD(fieldName)));
     
     if (!response.ok) {
       throw new Error(`Failed to fetch dropdown options for ${fieldName}: ${response.statusText}`);
@@ -52,7 +53,7 @@ class DropdownService {
    * Get all dropdown options for all fields
    */
   async getAllDropdownOptions(): Promise<AllDropdownsResponse> {
-    const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.DROPDOWNS.BASE));
+    const response = await authFetch(buildApiUrl(API_CONFIG.ENDPOINTS.DROPDOWNS.BASE));
     
     if (!response.ok) {
       throw new Error(`Failed to fetch all dropdown options: ${response.statusText}`);
@@ -65,7 +66,7 @@ class DropdownService {
    * Add a new option to a dropdown field
    */
   async addDropdownOption(request: AddOptionRequest): Promise<AddOptionResponse> {
-    const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.DROPDOWNS.ADD_OPTION), {
+    const response = await authFetch(buildApiUrl(API_CONFIG.ENDPOINTS.DROPDOWNS.ADD_OPTION), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -85,7 +86,7 @@ class DropdownService {
    * Delete a custom dropdown option (cannot delete default options)
    */
   async deleteDropdownOption(fieldName: string, optionValue: string): Promise<{ success: boolean }> {
-    const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.DROPDOWNS.DELETE_OPTION(fieldName, optionValue)), {
+    const response = await authFetch(buildApiUrl(API_CONFIG.ENDPOINTS.DROPDOWNS.DELETE_OPTION(fieldName, optionValue)), {
       method: 'DELETE',
     });
     

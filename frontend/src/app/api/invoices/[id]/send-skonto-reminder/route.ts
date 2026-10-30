@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { forwardAuth, unauthorized } from '@/lib/backendProxy';
 import { getApiUrl } from '@/config/api';
 
 export async function POST(
@@ -26,9 +27,13 @@ export async function POST(
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
+        ...forwardAuth(request),
         'Content-Type': 'application/json',
       },
     });
+
+    const denied = unauthorized(response);
+    if (denied) return denied;
     
     if (!response.ok) {
       const errorData = await response.json();

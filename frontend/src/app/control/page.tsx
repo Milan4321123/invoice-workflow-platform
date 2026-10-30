@@ -5,6 +5,7 @@ import { toast, Toaster } from 'react-hot-toast'
 import { CheckCircle, XCircle, DollarSign, Clock, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { buildApiUrl, API_CONFIG } from '@/config/api'
+import { authFetch } from '@/lib/authFetch';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -47,7 +48,7 @@ export default function InvoiceControlPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.INVOICES.BASE))
+      const response = await authFetch(buildApiUrl(API_CONFIG.ENDPOINTS.INVOICES.BASE))
       
       if (!response.ok) {
         throw new Error(`Failed to fetch invoices: ${response.statusText}`)
@@ -149,7 +150,7 @@ export default function InvoiceControlPage() {
           break
       }
 
-      const response = await fetch(buildApiUrl(endpoint), {
+      const response = await authFetch(buildApiUrl(endpoint), {
         method,
         headers: {
           'Content-Type': 'application/json',
