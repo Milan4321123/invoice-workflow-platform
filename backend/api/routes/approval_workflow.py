@@ -11,6 +11,7 @@ from typing import Dict, Any
 import logging
 
 from services.database import db_service
+from services.audit import current_actor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/approval", tags=["approval"])
@@ -49,6 +50,7 @@ async def handle_approval_action(token: str, request: Request):
         invoice_id = payload.get("invoice_id")
         action = payload.get("action")  # "approve" or "reject"
         user_email = payload.get("user_email")
+        current_actor.set(f"E-Mail-Link {user_email}")
         nonce = payload.get("nonce")
         created_at = payload.get("created_at")
         

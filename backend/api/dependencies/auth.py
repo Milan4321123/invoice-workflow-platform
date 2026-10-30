@@ -7,6 +7,7 @@ from typing import Dict, Any
 import logging
 
 from services.auth_service import auth_service
+from services.audit import current_actor
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
             )
+        current_actor.set(user["username"])
         return user
         
     except HTTPException:

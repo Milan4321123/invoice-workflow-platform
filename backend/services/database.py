@@ -11,6 +11,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 import json
 
+from services.audit import AuditLog
+from services.gobd import GoBDViolation, changed_fields, deletion_blocked_reason, edit_blocked_reason
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,7 @@ class DatabaseService:
             "folder_watcher": "folderwatcher"
         }
         self._initialize_client()
+        self.audit = AuditLog(lambda: self._client)
 
     @staticmethod
     def _storage_location(file_path: str) -> Tuple[str, str]:
@@ -181,8 +185,12 @@ class DatabaseService:
             logger.info(f"🔍 Supabase response: {response}")
             
             if response.data:
-                logger.info(f"✅ Created invoice: {response.data[0]['id']}")
-                return {"success": True, "data": response.data[0]}
+                created = response.data[0]
+                logger.info(f"✅ Created invoice: {created['id']}")
+                self.audit.record(created["id"], "created", changed_fields({}, {
+                    k: v for k, v in invoice_data.items() if k not in ("id", "created_at")
+                }))
+                return {"success": True, "data": created}
             else:
                 logger.error(f"❌ Failed to create invoice: {response}")
                 return {"success": False, "error": "Insert failed"}
@@ -317,6 +325,23 @@ class DatabaseService:
             logger.error(f"❌ Database error fetching invoice {invoice_id}: {e}")
             return {"success": False, "error": str(e)}
     
+    def _write_invoice(self, invoice_id: str, update_data: Dict[str, Any], action: str):
+        """
+        The one way an invoice row changes: refuses what the GoBD forbid
+        (raises GoBDViolation) and logs every changed field with old and new value.
+        """
+        before_rows = self._client.table(self.table_name).select("*").eq("id", invoice_id).execute().data
+        before = before_rows[0] if before_rows else {}
+        reason = edit_blocked_reason(before, update_data)
+        if reason:
+            raise GoBDViolation(reason)
+
+        response = self._client.table(self.table_name).update(update_data).eq("id", invoice_id).execute()
+        changes = changed_fields(before, update_data)
+        if response.data and changes:
+            self.audit.record(invoice_id, action, changes)
+        return response
+
     def update_invoice(self, invoice_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update an invoice record in invoices_clean table"""
         if not self.is_available:
@@ -326,17 +351,16 @@ class DatabaseService:
             # Add update timestamp
             update_data["updated_at"] = datetime.utcnow().isoformat()
             
-            response = (self._client.table(self.table_name)
-                       .update(update_data)
-                       .eq("id", invoice_id)
-                       .execute())
+            response = self._write_invoice(invoice_id, update_data, "updated")
             
             if response.data:
                 logger.info(f"✅ Updated invoice: {invoice_id}")
                 return {"success": True, "data": response.data[0]}
             else:
                 return {"success": False, "error": "Invoice not found or update failed"}
-                
+
+        except GoBDViolation as e:
+            return {"success": False, "error": str(e), "locked": True}
         except Exception as e:
             logger.error(f"❌ Database error updating invoice {invoice_id}: {e}")
             return {"success": False, "error": str(e)}
@@ -381,10 +405,7 @@ class DatabaseService:
             # Log the status change for debugging
             logger.info(f"🔄 Updating invoice {invoice_id}: status='{status}', review_status='{review_status}'")
             
-            response = (self._client.table(self.table_name)
-                       .update(update_data)
-                       .eq("id", invoice_id)
-                       .execute())
+            response = self._write_invoice(invoice_id, update_data, "status_changed")
             
             if response.data and len(response.data) > 0:
                 updated_invoice = response.data[0]
@@ -394,6 +415,8 @@ class DatabaseService:
                 logger.error(f"❌ Status update failed: No data returned for invoice {invoice_id}")
                 return {"success": False, "error": "Invoice not found or status update failed"}
                 
+        except GoBDViolation as e:
+            return {"success": False, "error": str(e), "locked": True}
         except Exception as e:
             logger.error(f"❌ Database error updating status for invoice {invoice_id}: {e}")
             return {"success": False, "error": str(e)}
@@ -434,10 +457,7 @@ class DatabaseService:
             
             logger.info(f"🏁 Completing invoice {invoice_id} by {completed_by}")
             
-            response = (self._client.table(self.table_name)
-                       .update(update_data)
-                       .eq("id", invoice_id)
-                       .execute())
+            response = self._write_invoice(invoice_id, update_data, "editing_completed")
             
             if response.data and len(response.data) > 0:
                 updated_invoice = response.data[0]
@@ -446,6 +466,8 @@ class DatabaseService:
             else:
                 return {"success": False, "error": "Invoice not found or completion failed"}
                 
+        except GoBDViolation as e:
+            return {"success": False, "error": str(e), "locked": True}
         except Exception as e:
             logger.error(f"❌ Database error completing invoice {invoice_id}: {e}")
             return {"success": False, "error": str(e)}
@@ -576,6 +598,10 @@ class DatabaseService:
             invoice_data = invoice_result["data"]
             filename = invoice_data.get("file_name", "unknown")
             file_path = invoice_data.get("file_path")
+
+            blocked = deletion_blocked_reason(invoice_data)
+            if blocked:
+                return {"success": False, "error": blocked, "locked": True}
             
             # Check if invoice has Skonto data for logging
             has_skonto_data = bool(
@@ -605,6 +631,10 @@ class DatabaseService:
             
             if response.data:
                 logger.info(f"✅ Successfully deleted invoice {invoice_id} from database")
+                self.audit.record(invoice_id, "deleted", changed_fields(invoice_data, {
+                    "file_name": None, "file_path": None, "status": None,
+                    "rechnungsnummer": None, "rechnungsbetrag": None, "rechnungssteller": None,
+                }))
                 if has_skonto_data:
                     logger.info(f"💰 Associated Skonto tracking data automatically cleaned up")
                 
@@ -655,7 +685,9 @@ class DatabaseService:
             if not all_invoices_result.get("success"):
                 return {"success": False, "error": "Failed to retrieve invoices for deletion"}
             
-            invoices = all_invoices_result["data"]
+            # Records under retention stay; only untouched uploads are removed (GoBD)
+            invoices = [i for i in all_invoices_result["data"] if not deletion_blocked_reason(i)]
+            kept_count = len(all_invoices_result["data"]) - len(invoices)
             total_count = len(invoices)
             
             if total_count == 0:
@@ -664,6 +696,7 @@ class DatabaseService:
                     "message": "No invoices to delete",
                     "deletion_summary": {
                         "total_deleted": 0,
+                        "kept_for_retention": kept_count,
                         "skonto_data_cleaned": 0,
                         "storage_files_cleaned": 0,
                         "failed_deletions": 0
@@ -702,12 +735,16 @@ class DatabaseService:
             # Perform bulk deletion of all records
             response = (self._client.table(self.table_name)
                        .delete()
-                       .neq("id", "00000000-0000-0000-0000-000000000000")  # Delete all (using impossible ID condition)
+                       .in_("id", [invoice["id"] for invoice in invoices])
                        .execute())
             
             if response.data is not None:
                 deleted_count = len(response.data) if response.data else total_count
                 logger.info(f"✅ Successfully deleted {deleted_count} invoice records from database")
+                for invoice in invoices:
+                    self.audit.record(invoice["id"], "deleted", changed_fields(invoice, {
+                        "file_name": None, "file_path": None, "status": None,
+                    }))
                 
                 # Clean up storage files
                 if file_paths_to_clean:
@@ -728,6 +765,7 @@ class DatabaseService:
                 
                 deletion_summary = {
                     "total_deleted": deleted_count,
+                    "kept_for_retention": kept_count,
                     "skonto_data_cleaned": skonto_data_count,
                     "storage_files_cleaned": storage_cleaned_count,
                     "failed_deletions": failed_count
@@ -942,10 +980,7 @@ class DatabaseService:
             if email_type == "editor_notification":
                 update_data["edit_bericht_sent_at"] = datetime.utcnow().isoformat()
             
-            response = (self._client.table(self.table_name)
-                       .update(update_data)
-                       .eq("id", invoice_id)
-                       .execute())
+            response = self._write_invoice(invoice_id, update_data, "email_logged")
             
             if response.data:
                 logger.info(f"✅ Email log updated for invoice: {invoice_id}")
@@ -953,6 +988,8 @@ class DatabaseService:
             else:
                 return {"success": False, "error": "Email log update failed"}
                 
+        except GoBDViolation as e:
+            return {"success": False, "error": str(e), "locked": True}
         except Exception as e:
             logger.error(f"❌ Failed to log email send: {e}")
             return {"success": False, "error": str(e)}
@@ -970,10 +1007,7 @@ class DatabaseService:
                 "updated_at": datetime.utcnow().isoformat()
             }
             
-            response = (self._client.table(self.table_name)
-                       .update(update_data)
-                       .eq("id", invoice_id)
-                       .execute())
+            response = self._write_invoice(invoice_id, update_data, "bauleiter_email_sent")
             
             if response.data:
                 logger.info(f"✅ Bauleiter email fields updated for invoice: {invoice_id}")
@@ -981,6 +1015,8 @@ class DatabaseService:
             else:
                 return {"success": False, "error": "Bauleiter email update failed"}
                 
+        except GoBDViolation as e:
+            return {"success": False, "error": str(e), "locked": True}
         except Exception as e:
             logger.error(f"❌ Failed to update Bauleiter email fields: {e}")
             return {"success": False, "error": str(e)}
@@ -1063,10 +1099,7 @@ class DatabaseService:
                 "updated_at": datetime.utcnow().isoformat()
             }
             
-            response = (self._client.table(self.table_name)
-                       .update(update_data)
-                       .eq("id", invoice_id)
-                       .execute())
+            response = self._write_invoice(invoice_id, update_data, "approval_decided")
             
             if response.data:
                 logger.info(f"✅ Approval status updated for invoice: {invoice_id}")
@@ -1074,6 +1107,8 @@ class DatabaseService:
             else:
                 return {"success": False, "error": "Approval status update failed"}
                 
+        except GoBDViolation as e:
+            return {"success": False, "error": str(e), "locked": True}
         except Exception as e:
             logger.error(f"❌ Failed to update approval status: {e}")
             return {"success": False, "error": str(e)}
@@ -1227,10 +1262,7 @@ class DatabaseService:
                 "skonto_reminder_sent_at": datetime.utcnow().isoformat()
             }
             
-            response = self._client.table(self.table_name)\
-                .update(update_data)\
-                .eq("id", invoice_id)\
-                .execute()
+            response = self._write_invoice(invoice_id, update_data, "skonto_reminder_sent")
             
             if response.data:
                 logger.info(f"✅ Marked Skonto reminder as sent for invoice {invoice_id}")
@@ -1239,6 +1271,8 @@ class DatabaseService:
                 logger.error(f"❌ Failed to update Skonto reminder status for invoice {invoice_id}")
                 return {"success": False, "error": "Skonto reminder update failed"}
                 
+        except GoBDViolation as e:
+            return {"success": False, "error": str(e), "locked": True}
         except Exception as e:
             logger.error(f"❌ Failed to update Skonto reminder status: {e}")
             return {"success": False, "error": str(e)}
@@ -1275,10 +1309,7 @@ class DatabaseService:
             if actual_savings is not None:
                 update_data["actual_skonto_savings"] = actual_savings
             
-            response = self._client.table(self.table_name)\
-                .update(update_data)\
-                .eq("id", invoice_id)\
-                .execute()
+            response = self._write_invoice(invoice_id, update_data, "skonto_decision")
             
             if response.data:
                 logger.info(f"✅ Updated Skonto decision for invoice {invoice_id}: {decision}")
@@ -1287,6 +1318,8 @@ class DatabaseService:
                 logger.error(f"❌ Failed to update Skonto decision for invoice {invoice_id}")
                 return {"success": False, "error": "Skonto decision update failed"}
                 
+        except GoBDViolation as e:
+            return {"success": False, "error": str(e), "locked": True}
         except Exception as e:
             logger.error(f"❌ Failed to update Skonto decision: {e}")
             return {"success": False, "error": str(e)}
@@ -1516,6 +1549,20 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"❌ Duplicate invoice number check failed: {e}")
             return {"success": False, "error": str(e)}
+
+    def get_invoices_for_export(self, columns: List[str]) -> List[Dict[str, Any]]:
+        """All invoices with the given columns, without signed file URLs (export can be large)"""
+        rows, start, page_size = [], 0, 1000
+        while True:
+            page = (self._client.table(self.table_name)
+                    .select(",".join(columns))
+                    .order("created_at")
+                    .range(start, start + page_size - 1)
+                    .execute()).data or []
+            rows.extend(page)
+            if len(page) < page_size:
+                return rows
+            start += page_size
 
     def check_duplicate_by_filename(self, filename: str) -> Dict[str, Any]:
         """

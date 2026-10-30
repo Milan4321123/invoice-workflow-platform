@@ -1,0 +1,112 @@
+"""In-memory stand-in for the parts of the Supabase client the services use."""
+import copy
+
+
+class _Result:
+    def __init__(self, data):
+        self.data = data
+        self.count = len(data)
+
+
+class _Query:
+    def __init__(self, table, op="select", payload=None):
+        self.table, self.op, self.payload = table, op, payload
+        self.filters, self.order_by, self.window = [], None, None
+        self.columns = "*"
+
+    # building
+    def select(self, columns="*", count=None):
+        self.columns = columns
+        return self
+
+    def eq(self, column, value):
+        self.filters.append(lambda row: row.get(column) == value)
+        return self
+
+    def neq(self, column, value):
+        self.filters.append(lambda row: row.get(column) != value)
+        return self
+
+    def in_(self, column, values):
+        values = set(values)
+        self.filters.append(lambda row: row.get(column) in values)
+        return self
+
+    def order(self, column, desc=False):
+        self.order_by = (column, desc)
+        return self
+
+    def limit(self, n):
+        self.window = (0, n - 1)
+        return self
+
+    def range(self, start, end):
+        self.window = (start, end)
+        return self
+
+    # running
+    def _matching(self):
+        rows = [row for row in self.table.rows if all(f(row) for f in self.filters)]
+        if self.order_by:
+            column, desc = self.order_by
+            rows.sort(key=lambda row: row.get(column), reverse=desc)
+        if self.window:
+            rows = rows[self.window[0]:self.window[1] + 1]
+        return rows
+
+    def execute(self):
+        if self.op == "insert":
+            row = copy.deepcopy(self.payload)
+            for column in self.table.unique:
+                if any(existing.get(column) == row.get(column) for existing in self.table.rows):
+                    raise Exception(f'duplicate key value violates unique constraint "{column}" (23505)')
+            self.table.rows.append(row)
+            return _Result([copy.deepcopy(row)])
+        matching = self._matching()
+        if self.op == "update":
+            for row in matching:
+                row.update(copy.deepcopy(self.payload))
+        elif self.op == "delete":
+            if self.table.append_only:
+                raise Exception("append-only")
+            self.table.rows = [row for row in self.table.rows if row not in matching]
+        if self.op == "select" and self.columns != "*":
+            wanted = [c.strip() for c in self.columns.split(",")]
+            return _Result([{c: copy.deepcopy(row.get(c)) for c in wanted} for row in matching])
+        return _Result([copy.deepcopy(row) for row in matching])
+
+
+class FakeTable:
+    def __init__(self, rows=None, unique=(), append_only=False):
+        self.rows = rows or []
+        self.unique = unique
+        self.append_only = append_only
+
+    def select(self, *args, **kwargs):
+        return _Query(self).select(*args, **kwargs)
+
+    def insert(self, payload):
+        return _Query(self, "insert", payload)
+
+    def update(self, payload):
+        return _Query(self, "update", payload)
+
+    def delete(self):
+        return _Query(self, "delete")
+
+
+class _Storage:
+    def from_(self, bucket):
+        return self
+
+    def remove(self, names):
+        return names
+
+
+class FakeSupabase:
+    def __init__(self, **tables):
+        self.tables = tables
+        self.storage = _Storage()
+
+    def table(self, name):
+        return self.tables.setdefault(name, FakeTable())

@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse
 
 from services.database import db_service
 from api.dependencies.auth import require_auth
+from services.audit import current_actor
 from services.email_service import email_service
 
 logger = logging.getLogger(__name__)
@@ -275,6 +276,7 @@ async def process_approval_action(
         invoice_id = token_data["invoice_id"]
         action = token_data["action"]
         user_email = token_data["user_email"]
+        current_actor.set(f"E-Mail-Link {user_email}")
         
         # Get invoice data
         invoice_data = await _get_invoice_data(invoice_id)
@@ -661,6 +663,7 @@ async def process_skonto_decision(
         
         invoice_id = token_data["invoice_id"]
         user_email = token_data["user_email"]
+        current_actor.set(f"E-Mail-Link {user_email}")
         
         # Validate decision parameter
         if decision not in ["taken", "missed"]:

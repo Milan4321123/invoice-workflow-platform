@@ -9,6 +9,7 @@ import logging
 from pydantic import BaseModel
 
 from services.auth_service import auth_service
+from services.audit import current_actor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
@@ -45,6 +46,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
+    current_actor.set(user["username"])
     return user
 
 @router.post("/token", response_model=LoginResponse)

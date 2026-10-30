@@ -284,6 +284,41 @@ CREATE TABLE IF NOT EXISTS public.skonto_scheduler_runs (
 
 CREATE INDEX IF NOT EXISTS idx_skonto_scheduler_runs_started_at ON public.skonto_scheduler_runs USING btree (started_at DESC) TABLESPACE pg_default;
 
+-- Invoice change log (see database/migrations/006_invoice_audit_log.sql)
+
+CREATE TABLE IF NOT EXISTS public.invoice_audit_log (
+  seq BIGINT PRIMARY KEY,                 -- gapless order of the hash chain
+  invoice_id UUID NOT NULL,               -- no foreign key: entries outlive deleted invoices
+  action VARCHAR(40) NOT NULL,
+  actor VARCHAR(255) NOT NULL,
+  changes JSONB NOT NULL DEFAULT '{}'::JSONB,
+  recorded_at TEXT NOT NULL,              -- exact string that was hashed
+  prev_hash CHAR(64) NOT NULL,
+  entry_hash CHAR(64) NOT NULL UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoice_audit_log_invoice ON public.invoice_audit_log (invoice_id, seq);
+
+-- Rows can be added, never changed or removed
+CREATE OR REPLACE FUNCTION public.reject_audit_log_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'invoice_audit_log is append-only (GoBD); % is not allowed', TG_OP;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS invoice_audit_log_no_update_delete ON public.invoice_audit_log;
+CREATE TRIGGER invoice_audit_log_no_update_delete
+  BEFORE UPDATE OR DELETE ON public.invoice_audit_log
+  FOR EACH ROW EXECUTE FUNCTION public.reject_audit_log_change();
+
+DROP TRIGGER IF EXISTS invoice_audit_log_no_truncate ON public.invoice_audit_log;
+CREATE TRIGGER invoice_audit_log_no_truncate
+  BEFORE TRUNCATE ON public.invoice_audit_log
+  FOR EACH STATEMENT EXECUTE FUNCTION public.reject_audit_log_change();
+
+
 -- =====================================================================
 -- 9. STORAGE BUCKETS (private: PDFs are only served via signed URLs)
 -- =====================================================================
@@ -340,6 +375,7 @@ ALTER TABLE dropdown_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gewerk_list ENABLE ROW LEVEL SECURITY;
 ALTER TABLE security_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE skonto_scheduler_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoice_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================================
 -- SETUP COMPLETE!
