@@ -64,7 +64,7 @@ const Navigation = () => {
                 <FileText className="h-6 w-6 text-white" />
               </div>
               <div className="hidden md:block">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                <h1 className="whitespace-nowrap text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                   OCR Invoice
                 </h1>
                 <p className="text-xs text-gray-600">Processor</p>
