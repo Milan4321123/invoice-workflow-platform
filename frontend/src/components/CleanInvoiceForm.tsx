@@ -640,12 +640,13 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
           {/* Input Fields */}
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="rechnungsbetrag" className="block text-sm font-medium text-gray-700 mb-2">
                 Rechnungsbetrag
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">€</span>
+                <span aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">€</span>
                 <input
+                  id="rechnungsbetrag"
                   type="number"
                   step="0.01"
                   value={fields.rechnungsbetrag || ''}
@@ -657,10 +658,11 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="rechnungseingang" className="block text-sm font-medium text-gray-700 mb-2">
                 Rechnungseingang
               </label>
               <input
+                  id="rechnungseingang"
                 type="date"
                 value={fields.rechnungseingang || ''}
                 onChange={(e) => onFieldChange('rechnungseingang', e.target.value)}
@@ -669,10 +671,11 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="faelligkeit" className="block text-sm font-medium text-gray-700 mb-2">
                 Fälligkeit
               </label>
               <input
+                  id="faelligkeit"
                 type="date"
                 value={fields.faelligkeit || ''}
                 onChange={(e) => onFieldChange('faelligkeit', e.target.value)}
@@ -682,10 +685,11 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="skonto_datum" className="block text-sm font-medium text-gray-700 mb-2">
                   Skonto Datum
                 </label>
                 <input
+                  id="skonto_datum"
                   type="date"
                   value={fields.skonto_datum || ''}
                   onChange={(e) => onFieldChange('skonto_datum', e.target.value)}
@@ -694,11 +698,12 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="skonto_prozent" className="block text-sm font-medium text-gray-700 mb-2">
                   Skonto Prozent
                 </label>
                 <div className="relative">
                   <input
+                  id="skonto_prozent"
                     type="number"
                     step="0.01"
                     min="0"
@@ -714,10 +719,11 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="rechnungsart" className="block text-sm font-medium text-gray-700 mb-2">
                 Rechnungsart
               </label>
               <select
+                  id="rechnungsart"
                 value={fields.rechnungsart || ''}
                 onChange={(e) => onFieldChange('rechnungsart', e.target.value)}
                 className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -731,23 +737,25 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
 
             <div className="flex items-center p-4 bg-gray-50 rounded-lg">
               <input
+                id="kfw_anrechenbar"
                 type="checkbox"
                 checked={fields.kfw_anrechenbar || false}
                 onChange={(e) => onFieldChange('kfw_anrechenbar', e.target.checked)}
                 className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <label className="ml-3 block text-sm font-medium text-gray-700">
+              <label htmlFor="kfw_anrechenbar" className="ml-3 block text-sm font-medium text-gray-700">
                 KfW anrechenbar
               </label>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <label htmlFor="rechnungspruefung_email" className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 <span className="text-red-500">*</span>
                 Rechnungsprüfung Email
                 <span className="text-xs text-red-600 font-normal">(Pflichtfeld)</span>
               </label>
               <input
+                  id="rechnungspruefung_email"
                 type="email"
                 value={fields.rechnungspruefung_email || ''}
                 onChange={(e) => onFieldChange('rechnungspruefung_email', e.target.value)}
@@ -758,9 +766,12 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
                 }`}
                 placeholder="email@beispiel.de"
                 required
+                aria-required="true"
+                aria-invalid={!fields.rechnungspruefung_email?.trim()}
+                aria-describedby="rechnungspruefung_email_hint"
               />
-              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <p id="rechnungspruefung_email_hint" className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <svg aria-hidden="true" className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
                 Erforderlich für Speichern, Abschließen und Dropdown-Änderungen

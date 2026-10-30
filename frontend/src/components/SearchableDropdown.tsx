@@ -4,7 +4,7 @@
  */
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { ChevronDown, Plus, X, Trash2 } from 'lucide-react';
 import { DropdownOption } from '@/services/dropdown';
 
@@ -41,6 +41,18 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   const [newOptionValue, setNewOptionValue] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  const labelId = `${id}-label`;
+  const valueId = `${id}-value`;
+  const listId = `${id}-list`;
+  const dialogTitleId = `${id}-dialog-title`;
+  const newOptionInputId = `${id}-new-option`;
+
+  // Typing should start in the search box as soon as the list opens
+  useEffect(() => {
+    if (isOpen) inputRef.current?.focus();
+  }, [isOpen]);
 
   // Filter options based on search term
   const filteredOptions = options.filter(option =>
@@ -127,21 +139,27 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     } else if (e.key === 'Escape') {
       setIsOpen(false);
       setSearchTerm('');
+      triggerRef.current?.focus();
     }
   };
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <span id={labelId} className="block text-sm font-medium text-gray-700 mb-1">
         {label}
-      </label>
+      </span>
       
       {/* Main dropdown trigger */}
       <div className="relative">
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
+          aria-labelledby={`${labelId} ${valueId}`}
+          aria-haspopup="true"
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? listId : undefined}
           className={`
             w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left
             ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-gray-400 cursor-pointer'}
@@ -149,10 +167,11 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
             focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
           `}
         >
-          <span className={`block truncate ${!displayValue ? 'text-gray-500' : ''}`}>
+          <span id={valueId} className={`block truncate ${!displayValue ? 'text-gray-500' : ''}`}>
             {displayValue || placeholder}
           </span>
           <ChevronDown
+            aria-hidden="true"
             className={`absolute right-2 top-2.5 h-4 w-4 text-gray-400 transition-transform
               ${isOpen ? 'rotate-180' : ''}
             `}
@@ -161,7 +180,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
         {/* Dropdown menu */}
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+          <div id={listId} className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
             {/* Search input */}
             <div className="p-2 border-b border-gray-200">
               <input
@@ -170,7 +189,8 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search options..."
+                placeholder="Optionen durchsuchen…"
+                aria-label={`${label}: Optionen durchsuchen`}
                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -191,7 +211,10 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                       onClick={() => handleSelect(option.value)}
                       className="flex-1 px-3 py-2 text-left flex items-center justify-between"
                     >
-                      <span>{option.label}</span>
+                      <span>
+                        {option.label}
+                        {value === option.value && <span className="sr-only"> (ausgewählt)</span>}
+                      </span>
                       {option.is_default && (
                         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded mr-2">
                           Standard
@@ -204,10 +227,11 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                       <button
                         type="button"
                         onClick={(e) => handleDelete(option.value, option.label, option.is_default, e)}
-                        className="opacity-0 group-hover:opacity-100 mr-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-opacity"
-                        title={`Delete "${option.label}"`}
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mr-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-opacity"
+                        title={`„${option.label}“ löschen`}
+                        aria-label={`${label}: Option „${option.label}“ löschen`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -227,7 +251,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                   onClick={() => setShowAddDialog(true)}
                   className="w-full px-3 py-2 text-left text-blue-600 hover:bg-blue-50 flex items-center gap-2 text-sm"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4" aria-hidden="true" />
                   Neue Option hinzufügen
                 </button>
               </div>
@@ -239,9 +263,9 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
       {/* Add new option dialog */}
       {showAddDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+          <div role="dialog" aria-modal="true" aria-labelledby={dialogTitleId} className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
+              <h3 id={dialogTitleId} className="text-lg font-medium text-gray-900">
                 Neue {label} hinzufügen
               </h3>
               <button
@@ -250,16 +274,18 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                   setNewOptionValue('');
                 }}
                 className="text-gray-400 hover:text-gray-600"
+                aria-label="Schließen"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor={newOptionInputId} className="block text-sm font-medium text-gray-700 mb-2">
                 Name der Option
               </label>
               <input
+                id={newOptionInputId}
                 type="text"
                 value={newOptionValue}
                 onChange={(e) => setNewOptionValue(e.target.value)}
