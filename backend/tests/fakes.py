@@ -27,6 +27,30 @@ class _Query:
         self.filters.append(lambda row: row.get(column) != value)
         return self
 
+    def ilike(self, column, pattern):
+        # Only the exact-match use the services make: escaped _ and %, no wildcards
+        wanted = pattern.replace("\\_", "_").replace("\\%", "%").replace("\\\\", "\\").lower()
+        self.filters.append(lambda row: str(row.get(column) or "").lower() == wanted)
+        return self
+
+    def lt(self, column, value):
+        self.filters.append(lambda row: row.get(column) is not None and row.get(column) < value)
+        return self
+
+    @property
+    def not_(self):
+        self._negate = True
+        return self
+
+    def is_(self, column, value):
+        check = (lambda row: row.get(column) is None) if value == "null" else (lambda row: row.get(column) == value)
+        if getattr(self, "_negate", False):
+            self._negate = False
+            self.filters.append(lambda row: not check(row))
+        else:
+            self.filters.append(check)
+        return self
+
     def in_(self, column, values):
         values = set(values)
         self.filters.append(lambda row: row.get(column) in values)

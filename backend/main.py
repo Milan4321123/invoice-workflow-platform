@@ -187,6 +187,7 @@ from api.routes import (
     folder_watcher,
     skonto_dashboard,  # Added missing skonto dashboard import
     gobd,
+    privacy,
     # multi_layer_approval,  # Removed - using simple single Bauleiter approval only
     auth
 )
@@ -211,6 +212,7 @@ app.include_router(reports.router, prefix="/api", tags=["reports"], dependencies
 app.include_router(skonto_dashboard.router, prefix="/api", tags=["skonto"], dependencies=logged_in)
 app.include_router(folder_watcher.router, prefix="/api/folder-watcher", tags=["folder-watcher"], dependencies=logged_in)
 app.include_router(gobd.router, prefix="/api", tags=["gobd"], dependencies=logged_in)
+app.include_router(privacy.router, prefix="/api", tags=["privacy"], dependencies=logged_in)
 # Removed multi_layer_approval.router - using simple single Bauleiter approval only
 
 @app.get("/")
@@ -290,6 +292,17 @@ async def startup_event():
         
     except Exception as e:
         logger.error(f"❌ Failed to start Skonto scheduler: {e}")
+
+    # Remove IP addresses once they are no longer needed (DSGVO storage limitation)
+    try:
+        from services.privacy_service import run_ip_cleanup_daily
+        from api.routes.privacy import privacy
+        import asyncio
+
+        if db_service.is_available:
+            asyncio.create_task(run_ip_cleanup_daily(privacy))
+    except Exception as e:
+        logger.error(f"❌ Failed to start IP address cleanup: {e}")
 
     # Watch folders are kept in memory, so restore the configured one on every start
     watch_path = os.getenv("FOLDER_WATCHER_PATH")
