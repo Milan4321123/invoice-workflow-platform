@@ -135,7 +135,7 @@ export default function HomePage() {
                     {card.description}
                   </p>
                   <div className="flex items-center justify-center text-purple-600 group-hover:text-purple-700 transition-colors">
-                    <span className="text-sm font-medium">Los geht's</span>
+                    <span className="text-sm font-medium">Los geht’s</span>
                     <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
                   </div>
                 </div>

@@ -420,7 +420,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
                 Ausstehende Dropdown-Änderungen ({pendingChanges.length})
               </h3>
               <div className="mt-2 text-sm text-yellow-700">
-                <p className="mb-3">Diese Änderungen werden gespeichert, wenn Sie auf "Dropdown-Änderungen speichern" klicken:</p>
+                <p className="mb-3">Diese Änderungen werden gespeichert, wenn Sie auf „Dropdown-Änderungen speichern“ klicken:</p>
                 
                 {Object.entries(groupPendingChangesByField()).map(([fieldName, changes]) => (
                   <div key={fieldName} className="mb-3 last:mb-0">
@@ -456,7 +456,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
                               <span className="text-red-600 font-medium">- Löschen:</span>
                             )}
                             <span className="font-mono bg-white px-2 py-1 rounded text-xs flex-1">
-                              "{change.optionLabel}"
+                              „{change.optionLabel}“
                             </span>
                             <span className="text-xs text-yellow-600">
                               ({new Date(change.timestamp).toLocaleTimeString('de-DE')})
@@ -932,7 +932,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
               
               <div className="border-t pt-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">"bestätigen"</span> ein, um fortzufahren:
+                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">„bestätigen“</span> ein, um fortzufahren:
                 </label>
                 <input
                   type="text"
@@ -949,7 +949,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
                 />
                 {confirmationText && confirmationText.toLowerCase() !== 'bestätigen' && (
                   <p className="text-xs text-red-600 mt-1">
-                    Bitte geben Sie genau "bestätigen" ein (ohne Anführungszeichen)
+                    Bitte geben Sie genau „bestätigen“ ein (ohne Anführungszeichen)
                   </p>
                 )}
               </div>
@@ -1013,7 +1013,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
               
               <div className="border-t pt-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">"bestätigen"</span> ein, um fortzufahren:
+                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">„bestätigen“</span> ein, um fortzufahren:
                 </label>
                 <input
                   type="text"
@@ -1030,7 +1030,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
                 />
                 {confirmationText && confirmationText.toLowerCase() !== 'bestätigen' && (
                   <p className="text-xs text-red-600 mt-1">
-                    Bitte geben Sie genau "bestätigen" ein (ohne Anführungszeichen)
+                    Bitte geben Sie genau „bestätigen“ ein (ohne Anführungszeichen)
                   </p>
                 )}
               </div>
@@ -1089,12 +1089,12 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-3">
                 Sie sind dabei, die <strong>Bearbeitung abzuschließen</strong>. 
-                Die Rechnung wird als "Abgeschlossen" markiert und der Status wird aktualisiert.
+                Die Rechnung wird als „Abgeschlossen“ markiert und der Status wird aktualisiert.
               </p>
               
               <div className="border-t pt-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">"bestätigen"</span> ein, um fortzufahren:
+                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">„bestätigen“</span> ein, um fortzufahren:
                 </label>
                 <input
                   type="text"
@@ -1111,7 +1111,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
                 />
                 {confirmationText && confirmationText.toLowerCase() !== 'bestätigen' && (
                   <p className="text-xs text-red-600 mt-1">
-                    Bitte geben Sie genau "bestätigen" ein (ohne Anführungszeichen)
+                    Bitte geben Sie genau „bestätigen“ ein (ohne Anführungszeichen)
                   </p>
                 )}
               </div>

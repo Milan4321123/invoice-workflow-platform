@@ -627,7 +627,7 @@ export default function CleanInvoiceDashboard() {
             {searchTerm && (
               <div className="mt-3 text-sm text-gray-600">
                 {filteredInvoices.length === 0 ? (
-                  <span className="text-orange-600">Keine Rechnungen gefunden für "{searchTerm}"</span>
+                  <span className="text-orange-600">Keine Rechnungen gefunden für „{searchTerm}“</span>
                 ) : (
                   <span>
                     {filteredInvoices.length} von {invoices.length} Rechnungen gefunden
@@ -1028,13 +1028,13 @@ export default function CleanInvoiceDashboard() {
                         </div>
                         <div className="mt-4">
                           <p className="text-sm text-gray-600">
-                            Geben Sie <strong>"ALLE LÖSCHEN"</strong> ein, um zu bestätigen:
+                            Geben Sie <strong>„ALLE LÖSCHEN“</strong> ein, um zu bestätigen:
                           </p>
                           <input
                             type="text"
                             id="confirm-delete-all"
                             className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                            placeholder="ALLE LÖSCHEN"
+                            placeholder=„ALLE LÖSCHEN“
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && (e.target as HTMLInputElement).value === 'ALLE LÖSCHEN') {
                                 deleteAllInvoices();
@@ -1055,7 +1055,7 @@ export default function CleanInvoiceDashboard() {
                       if (input?.value === 'ALLE LÖSCHEN') {
                         deleteAllInvoices();
                       } else {
-                        toast.error('Bitte geben Sie "ALLE LÖSCHEN" ein, um zu bestätigen');
+                        toast.error('Bitte geben Sie „ALLE LÖSCHEN“ ein, um zu bestätigen');
                       }
                     }}
                   >

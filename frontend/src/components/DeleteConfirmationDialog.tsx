@@ -122,7 +122,7 @@ export default function DeleteConfirmationDialog({
               </p>
               <div className="glass-card border border-red-200 rounded-xl p-3 mb-4">
                 <p className="text-sm text-red-800 font-medium mb-2">
-                  Geben Sie "LÖSCHEN" ein, um zu bestätigen:
+                  Geben Sie „LÖSCHEN“ ein, um zu bestätigen:
                 </p>
                 <input
                   type="text"
