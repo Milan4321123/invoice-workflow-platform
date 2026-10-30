@@ -56,7 +56,5 @@ services:
 # - ENABLE_EMAIL_NOTIFICATIONS: true
 
 # Frontend service environment variables:
-# - NEXT_PUBLIC_SUPABASE_URL: Same as SUPA_URL above
-# - NEXT_PUBLIC_SUPABASE_ANON_KEY: Same as SUPA_ANON_KEY above
 # - NEXT_PUBLIC_API_URL: https://your-backend-service-name.onrender.com
 # - NODE_ENV: production

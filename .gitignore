@@ -143,3 +143,6 @@ pids
 # Mails written in EMAIL_DEMO_MODE
 outbox/
 backend/outbox/
+
+# TypeScript incremental build cache
+*.tsbuildinfo

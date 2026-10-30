@@ -11,9 +11,7 @@ SUPA_KEY=your-service-role-key-here
 SUPA_SERVICE_ROLE_KEY=your-service-role-key-here
 SUPA_ANON_KEY=your-anon-key-here
 
-# Frontend database access (same values as above)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+# The frontend never talks to Supabase directly; all data goes through the API.
 
 # =====================================================================
 # DOCKER NETWORKING - REQUIRED
