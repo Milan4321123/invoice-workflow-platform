@@ -57,6 +57,12 @@ class DatabaseService:
 
     def _initialize_client(self):
         """Initialize the Supabase client using your .env credentials"""
+        if os.getenv("DEMO_MODE", "false").lower() == "true":
+            from services.in_memory_supabase import FakeSupabase
+            self._client = FakeSupabase()
+            logger.warning("🧪 DEMO_MODE: in-memory database with fictional data; nothing is saved")
+            return
+
         # Try multiple environment variable names for flexibility
         url = self._sanitize_env(os.getenv("SUPABASE_URL") or os.getenv("SUPA_URL"))
         

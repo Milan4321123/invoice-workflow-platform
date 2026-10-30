@@ -15,6 +15,26 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Demo mode: in-memory database with fictional invoices, no Supabase or
+# SendGrid account needed. Fixed demo login; e-mails go to the local outbox
+# folder, never out; nothing from a local .env reaches a real service.
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+if DEMO_MODE:
+    import secrets
+    from services.demo_data import DEMO_PASSWORD, DEMO_USER
+
+    os.environ.update({
+        "ADMIN_USERNAME": DEMO_USER,
+        "ADMIN_PASSWORD": DEMO_PASSWORD,
+        "ADMIN_EMAIL": "demo@muster-bau.example",
+        "ADMIN_FULL_NAME": "Demo-Benutzer",
+        "ACCOUNTING_EMAIL": "buchhaltung@muster-bau.example",
+        "EMAIL_DEMO_MODE": "true",
+        "SENDGRID_API_KEY": "",
+        "JWT_SECRET": secrets.token_urlsafe(48),
+    })
+    os.environ.pop("FOLDER_WATCHER_PATH", None)
+
 def validate_environment():
     """Validate critical environment variables on startup"""
     required_vars = {
@@ -23,6 +43,9 @@ def validate_environment():
         "SUPA_KEY": "Supabase service key",
         "ADMIN_PASSWORD": "Admin user password for initial setup"
     }
+    if DEMO_MODE:
+        logger.warning("🧪 DEMO_MODE: skipping Supabase configuration checks")
+        return True
     
     missing_vars = []
     insecure_vars = []
@@ -213,6 +236,9 @@ app.include_router(skonto_dashboard.router, prefix="/api", tags=["skonto"], depe
 app.include_router(folder_watcher.router, prefix="/api/folder-watcher", tags=["folder-watcher"], dependencies=logged_in)
 app.include_router(gobd.router, prefix="/api", tags=["gobd"], dependencies=logged_in)
 app.include_router(privacy.router, prefix="/api", tags=["privacy"], dependencies=logged_in)
+if DEMO_MODE:
+    from api.routes import demo
+    app.include_router(demo.router, prefix="/api", tags=["demo"])
 # Removed multi_layer_approval.router - using simple single Bauleiter approval only
 
 @app.get("/")
@@ -236,6 +262,12 @@ async def startup_event():
         import sys
         sys.exit(1)
     
+    if DEMO_MODE:
+        from services.database import db_service
+        from services import demo_data
+        demo_data.seed(db_service)
+        logger.warning(f"🧪 DEMO_MODE: demo invoices loaded; log in as {demo_data.DEMO_USER} / {demo_data.DEMO_PASSWORD}")
+
     # Check if database schema exists, if not, try to set it up
     try:
         from services.database import db_service
