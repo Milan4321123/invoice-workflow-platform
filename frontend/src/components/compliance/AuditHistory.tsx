@@ -79,7 +79,7 @@ export default function AuditHistory({ invoiceId }: { invoiceId: string }) {
                       <React.Fragment key={field}>
                         <dt className="font-mono">{field}</dt>
                         <dd>
-                          <span className="line-through text-gray-400">{formatValue(change.old)}</span>
+                          <span className="line-through text-gray-500">{formatValue(change.old)}</span>
                           {' → '}
                           <span className="text-gray-800">{formatValue(change.new)}</span>
                         </dd>

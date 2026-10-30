@@ -5,7 +5,7 @@ export const metadata = { title: 'Impressum' };
 /** Provider identification under §5 DDG (formerly §5 TMG). */
 export default function ImpressumPage() {
   return (
-    <article className="mx-auto max-w-2xl px-4 py-12 text-gray-800">
+    <article lang="de" className="mx-auto max-w-2xl px-4 py-12 text-gray-800">
       <h1 className="text-2xl font-semibold text-gray-900">Impressum</h1>
 
       <section className="mt-8">

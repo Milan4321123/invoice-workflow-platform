@@ -163,6 +163,9 @@ export default function PDFViewer({
       {/* Clean PDF Content Area - Full Display */}
             <div 
         className={`relative w-full h-full bg-gray-900 overflow-auto ${className}`}
+        tabIndex={0}
+        role="region"
+        aria-label="PDF"
         onScroll={handleScroll}
       >
         {error ? (

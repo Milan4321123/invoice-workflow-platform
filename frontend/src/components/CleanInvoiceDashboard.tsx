@@ -593,7 +593,7 @@ export default function CleanInvoiceDashboard() {
                 </select>
                 <button
                   onClick={exportForTaxAudit}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex items-center space-x-2 whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   title={t('dashboard.exportTitle')}
                 >
                   <Download className="h-4 w-4" aria-hidden="true" />

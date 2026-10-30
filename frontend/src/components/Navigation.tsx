@@ -67,7 +67,7 @@ const Navigation = () => {
                 <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                   OCR Invoice
                 </h1>
-                <p className="text-xs text-gray-500">Processor</p>
+                <p className="text-xs text-gray-600">Processor</p>
               </div>
             </Link>
           </div>
