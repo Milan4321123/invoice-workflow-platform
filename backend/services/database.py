@@ -344,7 +344,7 @@ class DatabaseService:
             self.audit.record(invoice_id, action, changes)
         return response
 
-    def update_invoice(self, invoice_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_invoice(self, invoice_id: str, update_data: Dict[str, Any], action: str = "updated") -> Dict[str, Any]:
         """Update an invoice record in invoices_clean table"""
         if not self.is_available:
             return {"success": False, "error": "Database unavailable"}
@@ -353,7 +353,7 @@ class DatabaseService:
             # Add update timestamp
             update_data["updated_at"] = datetime.utcnow().isoformat()
             
-            response = self._write_invoice(invoice_id, update_data, "updated")
+            response = self._write_invoice(invoice_id, update_data, action)
             
             if response.data:
                 logger.info(f"✅ Updated invoice: {invoice_id}")
@@ -503,7 +503,8 @@ class DatabaseService:
             logger.error(f"❌ Error updating invoice sent to Bauleiter {invoice_id}: {e}")
             return {"success": False, "error": str(e)}
 
-    def update_invoice_bauleiter_decision(self, invoice_id: str, decision: str, decided_by: str = None, decision_notes: str = None) -> Dict[str, Any]:
+    def update_invoice_bauleiter_decision(self, invoice_id: str, decision: str, decided_by: str = None,
+                                          decision_notes: str = None, method: str = "email_link") -> Dict[str, Any]:
         """
         Update invoice with Bauleiter's approval/rejection decision.
         Uses your actual database schema columns.
@@ -521,7 +522,7 @@ class DatabaseService:
                 "review_status": new_review_status,
                 "approval_status": decision,  # 'approved' or 'rejected'
                 "approved_at": now_iso,       # Your actual column!
-                "approval_method": "email_link",  # Your actual column!
+                "approval_method": method,        # email_link or dashboard
                 "updated_at": now_iso
             }
             
@@ -534,7 +535,7 @@ class DatabaseService:
             
             logger.info(f"⚖️ Bauleiter decision for invoice {invoice_id}: {decision.upper()}")
             
-            return self.update_invoice(invoice_id, update_data)
+            return self.update_invoice(invoice_id, update_data, action="approval_decided")
             
         except Exception as e:
             logger.error(f"❌ Error updating Bauleiter decision for invoice {invoice_id}: {e}")

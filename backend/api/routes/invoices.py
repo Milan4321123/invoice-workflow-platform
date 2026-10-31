@@ -12,6 +12,7 @@ from services.email_service import email_service
 from api.dependencies.auth import require_auth
 from services.invoice_compliance import check_stored_invoice, summarize
 from services.gobd import LOCKED_STATUSES, retention_until
+from services.audit import current_actor
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ async def get_pending_bauleiter_approvals(bauleiter_email: Optional[str] = None)
         if result["success"]:
             return {
                 "success": True,
-                "pending_approvals": result["data"],
+                "pending_approvals": [with_labels(invoice) for invoice in result["data"]],
                 "total": len(result["data"]),
                 "bauleiter_email": bauleiter_email
             }
@@ -837,7 +838,8 @@ async def approve_invoice(
     Approve an invoice (for control panel use).
     """
     try:
-        logger.info(f"✅ Approving invoice {invoice_id} via control panel")
+        logger.info(f"✅ Approving invoice {invoice_id} via dashboard")
+        notes = ((request_data or {}).get("notes") or "").strip()
         
         # Get invoice data first
         invoice_result = db_service.get_invoice(invoice_id)
@@ -845,12 +847,16 @@ async def approve_invoice(
             raise HTTPException(status_code=404, detail=f"Invoice not found: {invoice_result['error']}")
         
         # Update invoice status using existing database service
+        # Who decided comes from the login, not from the request body
         result = db_service.update_invoice_bauleiter_decision(
             invoice_id=invoice_id,
             decision="approved",
-            decided_by=request_data.get("decided_by", "control_panel") if request_data else "control_panel",
-            decision_notes="Approved via control panel"
+            decided_by=current_actor.get(),
+            decision_notes=notes or None,
+            method="dashboard",
         )
+        if result.get("locked"):
+            raise HTTPException(status_code=409, detail=result["error"])
         
         if result["success"]:
             logger.info(f"✅ Invoice {invoice_id} approved successfully")
@@ -885,7 +891,11 @@ async def reject_invoice(
     Reject an invoice (for control panel use).
     """
     try:
-        logger.info(f"❌ Rejecting invoice {invoice_id} via control panel")
+        logger.info(f"❌ Rejecting invoice {invoice_id} via dashboard")
+        notes = ((request_data or {}).get("notes") or "").strip()
+        if not notes:
+            # The supplier and accounting need to know what to fix
+            raise HTTPException(status_code=400, detail="Bitte einen Grund für die Ablehnung angeben.")
         
         # Get invoice data first
         invoice_result = db_service.get_invoice(invoice_id)
@@ -893,12 +903,16 @@ async def reject_invoice(
             raise HTTPException(status_code=404, detail=f"Invoice not found: {invoice_result['error']}")
         
         # Update invoice status using existing database service
+        # Who decided comes from the login, not from the request body
         result = db_service.update_invoice_bauleiter_decision(
             invoice_id=invoice_id,
             decision="rejected",
-            decided_by=request_data.get("decided_by", "control_panel") if request_data else "control_panel",
-            decision_notes="Rejected via control panel"
+            decided_by=current_actor.get(),
+            decision_notes=notes or None,
+            method="dashboard",
         )
+        if result.get("locked"):
+            raise HTTPException(status_code=409, detail=result["error"])
         
         if result["success"]:
             logger.info(f"❌ Invoice {invoice_id} rejected successfully")

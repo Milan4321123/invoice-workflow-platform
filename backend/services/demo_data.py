@@ -1,10 +1,10 @@
 """
 Fictional data for demo mode (DEMO_MODE=true).
 
-Six invoices from a made-up construction company, each showing one part of
+Seven invoices from a made-up construction company, each showing one part of
 the workflow: a complete invoice, a ZUGFeRD PDF and a bare XRechnung that
 fill themselves in, an invoice with §14 UStG errors, an approved (locked)
-one and a likely double payment. Companies, VAT IDs and people are
+one, one waiting for the site manager, and a likely double payment. Companies, VAT IDs and people are
 invented; the VAT IDs have valid check digits but belong to nobody, and the
 IBANs are the usual published test numbers.
 """
@@ -92,7 +92,7 @@ def seed(db) -> None:
 
     for field, options in {
         "projekt": [("omega", "Wohnanlage Omega"), ("hafen", "Bürohaus Hafenkante")],
-        "gewerk": [("elektro", "Elektroinstallation"), ("sanitaer", "Sanitärinstallation"),
+        "gewerk": [("elektro", "Elektroinstallation"), ("sanitaer", "Sanitärinstallation"), ("heizung", "Heizungsbau"),
                    ("maler", "Malerarbeiten"), ("fliesen", "Fliesenarbeiten"), ("trockenbau", "Trockenbau")],
         "rechnungsempfaenger": [("muster_bau", "Muster Bau AG")],
         "weiter_berechnen_an": [("keine", "Keine Weiterberechnung"), ("bauherr", "Bauherr")],
@@ -178,6 +178,20 @@ def seed(db) -> None:
     db.audit.record(approved_id, "approval_decided",
                     {"status": {"old": "uploaded", "new": "approved_by_bauleiter"}},
                     actor="E-Mail-Link bauleitung@muster-bau.example")
+
+    # Waiting for the site manager's approval (Bauleiter dashboard)
+    add("20261022_OMEGA_HEIZUNG_Wagner.pdf", invoice_pdf(
+        "Heizungsbau Wagner GmbH", "Thermenweg 2 · 13353 Berlin · USt-IdNr. DE987654328", "HW-2026-204",
+        today - timedelta(days=8), [("Fußbodenheizung 1. OG, Material und Montage", 6400.0)], 6400, 19, 1216, 7616,
+        ["IBAN DE02 1203 0000 0000 2020 51"]), "in_review_by_bauleiter", dict(
+            rechnungssteller="Heizungsbau Wagner GmbH", lieferant_ust_id="DE987654328", projekt="omega", gewerk="heizung",
+            rechnungsnummer="HW-2026-204", rechnungsdatum=(today - timedelta(days=8)).isoformat(),
+            leistungsdatum=(today - timedelta(days=12)).isoformat(), rechnungseingang=(today - timedelta(days=6)).isoformat(),
+            nettobetrag=6400.0, ust_satz=19.0, ust_betrag=1216.0, rechnungsbetrag=7616.0,
+            faelligkeit=(today + timedelta(days=22)).isoformat(), lieferant_iban="DE02120300000000202051",
+            freistellung_48b_gueltig_bis=(today + timedelta(days=180)).isoformat(),
+            bauleiter_email="bauleitung@muster-bau.example", rechnungspruefung="pruefung@muster-bau.example",
+        ))
 
     # Same supplier and number again: probably the same invoice sent twice
     add("20261028_OMEGA_MALER_Klein.pdf", invoice_pdf(

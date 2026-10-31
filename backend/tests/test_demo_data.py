@@ -26,7 +26,9 @@ def codes(row):
 
 def test_seeded_invoices(demo_db):
     rows = by_name(demo_db)
-    assert len(rows) == 6
+    assert len(rows) == 7
+    assert rows["20261022_OMEGA_HEIZUNG_Wagner.pdf"]["status"] == "in_review_by_bauleiter"
+    assert codes(rows["20261022_OMEGA_HEIZUNG_Wagner.pdf"]) == set()
     assert codes(rows["20261015_OMEGA_ELEKTRO_Mueller.pdf"]) == set()
     assert rows["20261020_OMEGA_FLIESEN_Schmidt.pdf"]["e_rechnung_format"] == "ZUGFeRD/Factur-X (EN 16931)"
     assert rows["20261001_HAFEN_TROCKENBAU_Weber.xml"]["reverse_charge_13b"] is True
