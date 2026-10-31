@@ -25,8 +25,14 @@ RETENTION_YEARS = 8
 # Nobody has worked on the invoice yet, so it is still just an upload
 DELETABLE_STATUSES = {"uploaded", "pending", "error"}
 
-# The approver has signed off; the booking-relevant content is final
+# Statuses an approved invoice may still move between. "completed" alone is not a
+# lock: the AP clerk completes the editing *before* the site manager approves.
 LOCKED_STATUSES = {"approved_by_bauleiter", "completed"}
+
+
+def is_locked(invoice: Dict[str, Any]) -> bool:
+    """The approver has signed off; the booking-relevant content is final"""
+    return invoice.get("status") == "approved_by_bauleiter" or invoice.get("approval_status") == "approved"
 
 # What an approval or booking relies on. Workflow fields (status, e-mail logs,
 # Skonto decision, reminders) keep changing after approval and stay editable.
@@ -96,7 +102,7 @@ def changed_fields(before: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, 
 
 
 def edit_blocked_reason(before: Dict[str, Any], update: Dict[str, Any]) -> Optional[str]:
-    if before.get("status") not in LOCKED_STATUSES:
+    if not is_locked(before):
         return None
     if "status" in update and update["status"] not in LOCKED_STATUSES:
         # Otherwise saving in the editor would move it back to "edited" and unlock it

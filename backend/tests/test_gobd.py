@@ -40,10 +40,20 @@ def test_changed_fields_reports_old_and_new():
         "rechnungsbetrag": {"old": 1190, "new": 1200}}
 
 
-@pytest.mark.parametrize("status", ["approved_by_bauleiter", "completed"])
-def test_approved_amounts_are_locked(status):
-    reason = edit_blocked_reason({"status": status, "rechnungsbetrag": 1190}, {"rechnungsbetrag": 1100})
+@pytest.mark.parametrize("before", [
+    {"status": "approved_by_bauleiter"},
+    {"status": "completed", "approval_status": "approved"},
+])
+def test_approved_amounts_are_locked(before):
+    reason = edit_blocked_reason({**before, "rechnungsbetrag": 1190}, {"rechnungsbetrag": 1100})
     assert "rechnungsbetrag" in reason
+
+
+def test_completed_editing_is_not_an_approval():
+    """The clerk completes the editing, then sends the invoice to the site manager"""
+    before = {"status": "completed", "approval_status": None}
+    assert edit_blocked_reason(before, {"status": "in_review_by_bauleiter"}) is None
+    assert edit_blocked_reason(before, {"rechnungsbetrag": 1100}) is None
 
 
 def test_workflow_fields_stay_editable_after_approval():
@@ -53,7 +63,7 @@ def test_workflow_fields_stay_editable_after_approval():
 
 def test_saving_unchanged_values_after_approval_is_fine():
     """The editor sends every field on save; only real changes count."""
-    before = {"status": "completed", "rechnungsbetrag": 1190, "projekt": "omega"}
+    before = {"status": "completed", "approval_status": "approved", "rechnungsbetrag": 1190, "projekt": "omega"}
     assert edit_blocked_reason(before, {"rechnungsbetrag": 1190.0, "projekt": "omega"}) is None
 
 
