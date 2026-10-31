@@ -198,3 +198,21 @@ def seed(db) -> None:
         "Malerbetrieb Klein", "Farbenweg 9 · 14193 Berlin · St.-Nr. 21/815/08150", "MK-2026-117", date(2026, 9, 8),
         [("Malerarbeiten Treppenhaus", 3200.0)], 3200, 19, 608, 3808, ["ZWEITSCHRIFT"]), "uploaded",
         {**approved, "rechnungseingang": (today - timedelta(days=2)).isoformat(), "bauleiter_email": None})
+
+
+async def send_demo_emails(db) -> None:
+    """
+    Put an approval request (Wagner, to the site manager) and a Skonto
+    reminder (Müller, to accounting) in the demo outbox, so the e-mail links
+    can be tried right away.
+    """
+    from services.email_service import email_service
+
+    rows = {row["file_name"]: row for row in db.client.table(db.table_name).rows}
+    wagner = rows["20261022_OMEGA_HEIZUNG_Wagner.pdf"]
+    await email_service.send_bauleiter_approval_request(
+        invoice_data=wagner, bauleiter_email=wagner["bauleiter_email"],
+        editor_name="Rechnungsprüfung", editor_email="pruefung@muster-bau.example")
+    mueller = rows["20261015_OMEGA_ELEKTRO_Mueller.pdf"]
+    await email_service.send_skonto_reminder(
+        invoice_data=mueller, recipient_email="buchhaltung@muster-bau.example", recipient_name="Buchhaltung")

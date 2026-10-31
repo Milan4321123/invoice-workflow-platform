@@ -7,7 +7,7 @@ import os
 import json
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from uuid import UUID
@@ -46,7 +46,9 @@ class EmailService:
         self.jwt_secret = os.getenv("JWT_SECRET")
         if not self.jwt_secret or self.jwt_secret.startswith("your-"):
             logger.warning("⚠️  JWT_SECRET not properly configured - email approval links may be insecure")
-        self.base_url = os.getenv("BASE_URL", "http://localhost:8001")
+        # Links in e-mails point at the API (approval pages) and the app (staff mails)
+        self.base_url = (os.getenv("BASE_URL") or os.getenv("API_BASE_URL") or "http://localhost:8000").rstrip("/")
+        self.frontend_url = (os.getenv("FRONTEND_URL") or "http://localhost:3000").rstrip("/")
         
         # Demo mode configuration
         self.demo_mode = os.getenv("EMAIL_DEMO_MODE", "false").lower() == "true"
@@ -208,14 +210,11 @@ class EmailService:
                 </div>
             </div>
 
-            <!-- PDF Link - Visual Only -->
-            {% if has_pdf %}
+            <!-- Original invoice: opens in the app (login required) -->
+            {% if pdf_url %}
             <div class="pdf-link">
-                <strong>📄 Original Rechnung anzeigen:</strong><br>
-                <div style="display: inline-block; padding: 12px 24px; background: #e2e8f0; color: #718096; border-radius: 6px; margin: 10px; font-weight: 500; font-size: 14px; cursor: not-allowed;">PDF öffnen (Nicht verfügbar)</div>
-                <p style="font-size: 12px; color: #718096; margin: 10px 0 0 0;">
-                    Diese Funktion ist aktuell nicht verfügbar - PDF wird lokal gespeichert
-                </p>
+                <strong>📄 Original-Rechnung:</strong><br>
+                <a href="{{ pdf_url }}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; margin: 10px; font-weight: 600; font-size: 14px;">Rechnung im System öffnen</a>
             </div>
             {% endif %}
 
@@ -404,13 +403,11 @@ class EmailService:
                 </div>
             </div>
 
-            <!-- PDF Link (Non-functional) -->
-            {% if has_pdf %}
+            <!-- Original invoice: served against the approval token, valid until {{ token_expires }} -->
+            {% if pdf_url %}
             <div class="pdf-section">
-                <div style="display: inline-block; padding: 8px 16px; background: #6c757d; color: white; border-radius: 4px; font-size: 14px;">
-                    📄 PDF nicht verfügbar
-                </div>
-                <p style="margin: 8px 0 0 0; font-size: 13px; color: #6c757d;">PDF-Ansicht wird nach der Unternehmens-Konfiguration verfügbar sein</p>
+                <a href="{{ pdf_url }}" style="display: inline-block; padding: 10px 20px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">📄 Rechnung als PDF öffnen</a>
+                <p style="margin: 8px 0 0 0; font-size: 13px; color: #6c757d;">Gültig bis {{ token_expires }}.</p>
             </div>
             {% endif %}
 
@@ -433,7 +430,7 @@ class EmailService:
             <div class="action-buttons">
                 <h3>🎯 Genehmigung erforderlich</h3>
                 <p style="color: #4a5568; margin-bottom: 25px;">
-                    Bitte prüfen Sie die Rechnung und entscheiden Sie mit einem Klick:
+                    Die Links öffnen eine Seite mit der Rechnung. Dort bestätigen Sie Ihre Entscheidung:
                 </p>
                 <a href="{{ approve_url }}" style="display: inline-block; padding: 16px 32px; background: #38a169; color: #ffffff; text-decoration: none; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px;">✅ RECHNUNG GENEHMIGEN</a>
                 <a href="{{ reject_url }}" style="display: inline-block; padding: 16px 32px; background: #e53e3e; color: #ffffff; text-decoration: none; border-radius: 8px; margin: 10px; font-weight: 600; font-size: 16px;">❌ RECHNUNG ABLEHNEN</a>
@@ -934,10 +931,10 @@ class EmailService:
                 "changes_summary": changes_summary or []
             }
             
-            # Generate PDF URL if file path exists
-            if invoice_data.get("file_path"):
-                from services.pdf_url_service import pdf_url_service
-                context["pdf_url"] = pdf_url_service.get_pdf_url(invoice_data["file_path"])
+            # Staff open the invoice in the app (login required) rather than via a storage
+            # link that expires after an hour
+            if invoice_data.get("file_path") and invoice_data.get("id"):
+                context["pdf_url"] = f"{self.frontend_url}/invoice-editor/{invoice_data['id']}"
             
             # Choose template and subject based on completion status
             if is_completion:
@@ -1013,11 +1010,9 @@ class EmailService:
             approve_url = f"{self.base_url}/api/approval/{approve_token}"
             reject_url = f"{self.base_url}/api/approval/{reject_token}"
             
-            # Generate PDF URL if file path exists
-            pdf_url = None
-            if invoice_data.get("file_path"):
-                from services.pdf_url_service import pdf_url_service
-                pdf_url = pdf_url_service.get_pdf_url(invoice_data["file_path"])
+            # The site manager has no login: the PDF is served against the approval token,
+            # valid as long as the token (a storage signed URL would expire after an hour)
+            pdf_url = f"{self.base_url}/api/approval/{approve_token}/pdf" if invoice_data.get("file_path") else None
             
             # Helper function to clean placeholder values
             def clean_field_value(value):
@@ -1410,7 +1405,10 @@ class EmailService:
                 outbox_dir = Path(os.getenv("EMAIL_OUTBOX_DIR", "outbox"))
                 outbox_dir.mkdir(parents=True, exist_ok=True)
                 outbox_file = outbox_dir / f"{start_time:%Y%m%d_%H%M%S_%f}_{email_type}.html"
-                outbox_file.write_text(html_content, encoding="utf-8")
+                header = json.dumps({"to": to_email, "subject": subject, "type": email_type,
+                                     "invoice_id": str(invoice_id) if invoice_id else None,
+                                     "sent_at": start_time.isoformat()}, ensure_ascii=False)
+                outbox_file.write_text(f"<!-- outbox {header} -->\n{html_content}", encoding="utf-8")
                 logger.info(f"   Saved to: {outbox_file.resolve()}")
                 result = {
                     "success": True,
@@ -1539,7 +1537,9 @@ class EmailService:
                 "action": action,
                 "user_email": user_email,
                 "nonce": secrets.token_hex(16),
-                "created_at": datetime.now().isoformat()
+                "created_at": datetime.now().isoformat(),
+                # Expiry in the token itself too, not only in the database record
+                "exp": datetime.now(timezone.utc) + timedelta(days=7),
             }
             
             # Create JWT token

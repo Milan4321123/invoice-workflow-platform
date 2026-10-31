@@ -19,10 +19,13 @@ PUBLIC_ROUTES = {
     ("POST", "/api/auth/token"),
     ("POST", "/api/auth/login"),
     ("POST", "/api/auth/verify"),
-    # Links in approval and Skonto e-mails; each carries a signed, expiring token
+    # Links in approval and Skonto e-mails; each carries a signed, expiring, single-use token.
+    # GET only shows a page; the decision is the POST from that page.
     ("GET", "/api/approval/{token}"),
-    ("GET", "/api/api/approval/{token}"),
+    ("POST", "/api/approval/{token}"),
+    ("GET", "/api/approval/{token}/pdf"),
     ("GET", "/api/email/skonto-decision"),
+    ("POST", "/api/email/skonto-decision"),
     # Placeholder PDF for the demo storage mode
     ("GET", "/api/mock-storage/{filename}"),
 }

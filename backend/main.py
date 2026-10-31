@@ -36,6 +36,12 @@ if DEMO_MODE:
         "JWT_SECRET": secrets.token_urlsafe(48),
     })
     os.environ.pop("FOLDER_WATCHER_PATH", None)
+    # Links in demo e-mails must reach this demo, not an app configured in .env;
+    # and each run gets a fresh outbox (older links are signed with an old secret)
+    import tempfile
+    os.environ["BASE_URL"] = os.getenv("API_BASE_URL", "http://localhost:8000")
+    os.environ["FRONTEND_URL"] = os.getenv("DEMO_FRONTEND_URL", "http://localhost:3000")
+    os.environ["EMAIL_OUTBOX_DIR"] = tempfile.mkdtemp(prefix="invoice-demo-outbox-")
 
 def validate_environment():
     """Validate critical environment variables on startup"""
@@ -178,7 +184,8 @@ async def add_security_headers(request: Request, call_next):
     
     # Security headers
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
+    # DENY unless a route deliberately allows framing (the invoice PDF on the approval page)
+    response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     
@@ -205,7 +212,6 @@ from api.routes import (
     invoices, 
     dropdowns, 
     approval, 
-    approval_workflow,
     email_workflow,
     # email_test,  # Removed - not needed for production
     reports,
@@ -232,8 +238,10 @@ app.include_router(upload.router, prefix="/api", tags=["upload"])
 app.include_router(invoices.router, prefix="/api", tags=["invoices"], dependencies=logged_in)
 app.include_router(dropdowns.router, prefix="/api", tags=["dropdowns"], dependencies=logged_in)
 app.include_router(approval.router, prefix="/api/approval", tags=["approval"], dependencies=logged_in)
-app.include_router(approval_workflow.router, prefix="/api", tags=["workflow"])
 app.include_router(email_workflow.router, prefix="/api", tags=["email"])
+# Pages behind the links in approval and Skonto e-mails: public, the signed token is the credential
+from api.routes import email_links
+app.include_router(email_links.router, prefix="/api", tags=["email-links"])
 app.include_router(reports.router, prefix="/api", tags=["reports"], dependencies=logged_in)
 app.include_router(skonto_dashboard.router, prefix="/api", tags=["skonto"], dependencies=logged_in)
 app.include_router(folder_watcher.router, prefix="/api/folder-watcher", tags=["folder-watcher"], dependencies=logged_in)
@@ -243,6 +251,7 @@ app.include_router(ai.router, prefix="/api", tags=["ai"], dependencies=logged_in
 if DEMO_MODE:
     from api.routes import demo
     app.include_router(demo.router, prefix="/api", tags=["demo"])
+    app.include_router(demo.outbox_router, prefix="/api", tags=["demo"], dependencies=logged_in)
 # Removed multi_layer_approval.router - using simple single Bauleiter approval only
 
 @app.get("/")
@@ -270,6 +279,7 @@ async def startup_event():
         from services.database import db_service
         from services import demo_data
         demo_data.seed(db_service)
+        await demo_data.send_demo_emails(db_service)
         logger.warning(f"🧪 DEMO_MODE: demo invoices loaded; log in as {demo_data.DEMO_USER} / {demo_data.DEMO_PASSWORD}")
 
     # Check if database schema exists, if not, try to set it up
