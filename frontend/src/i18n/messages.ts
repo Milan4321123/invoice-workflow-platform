@@ -205,6 +205,19 @@ export const de = {
   'site.due': 'fällig',
   'site.failed': 'Aktion fehlgeschlagen',
   'site.loading': 'Wird geladen…',
+
+  'nav.outbox': 'Postausgang',
+  'outbox.title': 'Postausgang (Demo)',
+  'outbox.subtitle': 'Im Demo-Modus werden E-Mails nicht versendet, sondern hier gesammelt. Die Links darin funktionieren: Freigabe, Ablehnung, Skonto und PDF.',
+  'outbox.empty': 'Noch keine E-Mails.',
+  'outbox.to': 'An',
+  'outbox.select': 'E-Mail auswählen, um sie anzuzeigen.',
+  'outbox.preview': 'Vorschau der E-Mail',
+  'outbox.refresh': 'Aktualisieren',
+  'outbox.type.bauleiter_approval': 'Freigabe-Anfrage',
+  'outbox.type.skonto_reminder': 'Skonto-Erinnerung',
+  'outbox.type.editor_notification': 'Prüfbericht',
+  'outbox.linkHint': 'Links öffnen sich in einem neuen Tab.',
 } as const;
 
 export type MessageKey = keyof typeof de;
@@ -407,4 +420,17 @@ export const en: Record<MessageKey, string> = {
   'site.due': 'due',
   'site.failed': 'Action failed',
   'site.loading': 'Loading…',
+
+  'nav.outbox': 'Outbox',
+  'outbox.title': 'Outbox (demo)',
+  'outbox.subtitle': 'In demo mode e-mails are not sent but collected here. Their links work: approve, reject, Skonto and PDF.',
+  'outbox.empty': 'No e-mails yet.',
+  'outbox.to': 'To',
+  'outbox.select': 'Select an e-mail to view it.',
+  'outbox.preview': 'E-mail preview',
+  'outbox.refresh': 'Refresh',
+  'outbox.type.bauleiter_approval': 'Approval request',
+  'outbox.type.skonto_reminder': 'Skonto reminder',
+  'outbox.type.editor_notification': 'Review report',
+  'outbox.linkHint': 'Links open in a new tab.',
 };

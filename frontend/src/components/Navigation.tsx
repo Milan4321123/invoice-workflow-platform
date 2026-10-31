@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,10 +19,13 @@ import {
   User,
   Settings,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  Inbox
 } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useT } from '@/i18n/LanguageContext';
+import { authFetch } from '@/lib/authFetch';
+import { buildApiUrl } from '@/config/api';
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -39,6 +42,11 @@ const Navigation = () => {
   };
 
   const t = useT();
+  // The outbox only exists in demo mode, where e-mails aren't really sent
+  const [isDemo, setIsDemo] = useState(false);
+  useEffect(() => {
+    authFetch(buildApiUrl('/api/demo/outbox')).then((r) => setIsDemo(r.ok)).catch(() => setIsDemo(false));
+  }, []);
 
   const navItems = [
     { href: '/', label: t('nav.home'), icon: Home },
@@ -48,6 +56,7 @@ const Navigation = () => {
     { href: '/prufbericht', label: t('nav.report'), icon: BarChart3 },
     { href: '/health', label: t('nav.health'), icon: Activity },
     { href: '/assistent', label: t('nav.assistant'), icon: Sparkles },
+    ...(isDemo ? [{ href: '/postausgang', label: t('nav.outbox'), icon: Inbox }] : []),
     { href: '/datenschutz-anfragen', label: t('nav.privacy'), icon: ShieldCheck },
   ];
 
