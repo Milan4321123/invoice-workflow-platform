@@ -61,7 +61,7 @@ const Navigation = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center space-x-3">
+            <Link href="/dashboard" aria-label={t('nav.dashboard')} className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
                 <FileText className="h-6 w-6 text-white" />
               </div>
