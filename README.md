@@ -12,7 +12,7 @@
 ./start-demo.sh
 ```
 
-Open http://localhost:3000 and log in as **`demo` / `Demo-2026!`**. Demo mode runs on an in-memory database with six fictional invoices, each showing one feature. No Supabase or e-mail account is needed, nothing is saved, and e-mails are written to `backend/outbox/` instead of being sent.
+Open http://localhost:3000 and log in as **`demo` / `Demo-2026!`**. The script builds the frontend for production (fast pages); `./start-demo.sh --dev` starts the Next.js dev server for coding instead, which compiles each page on first visit and is much slower. Demo mode runs on an in-memory database with six fictional invoices, each showing one feature. No Supabase or e-mail account is needed, nothing is saved, and e-mails are written to `backend/outbox/` instead of being sent.
 
 ## What it does
 
