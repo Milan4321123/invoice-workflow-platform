@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, Filter, Download, RefreshCw, Mail, ThumbsUp, ThumbsDown, Settings, Play, Pause, Zap, Timer } from 'lucide-react';
 import { authFetch } from '@/lib/authFetch';
+import { toast } from 'react-hot-toast';
+import { Notice } from '@/components/ui/Notice';
 
 interface SkontoMetrics {
   totalInvoices: number;
@@ -191,9 +193,8 @@ export default function PrufberichtPage() {
       
       if (response.ok) {
         const result = await response.json();
-        alert(result.email_provider === 'demo'
-          ? '📁 Demo-Modus: Die Erinnerung wurde nicht versendet, sondern in backend/outbox gespeichert.'
-          : '✅ Erinnerung erfolgreich gesendet!');
+        toast.success(<Notice title="Skonto-Erinnerung gesendet"
+          text={result.email_provider === 'demo' ? 'Demo-Modus: Die E-Mail liegt im Postausgang.' : undefined} />);
         // Refresh data after action
         await fetchData();
       } else {
@@ -202,7 +203,7 @@ export default function PrufberichtPage() {
       }
     } catch (error) {
       console.error('Error sending reminder:', error);
-      alert('Fehler beim Senden der Erinnerung: ' + (error as Error).message);
+      toast.error(<Notice title="Erinnerung konnte nicht gesendet werden" text={(error as Error).message} />);
     } finally {
       setActionLoading(null);
     }
@@ -222,7 +223,7 @@ export default function PrufberichtPage() {
       });
       
       if (response.ok) {
-        // Refresh data after action
+        toast.success('Skonto als genutzt markiert');
         await fetchData();
       } else {
         const errorData = await response.json();
@@ -230,7 +231,7 @@ export default function PrufberichtPage() {
       }
     } catch (error) {
       console.error('Error marking as taken:', error);
-      alert('Fehler beim Markieren als genutzt: ' + (error as Error).message);
+      toast.error(<Notice title="Konnte nicht gespeichert werden" text={(error as Error).message} />);
     } finally {
       setActionLoading(null);
     }
@@ -250,7 +251,7 @@ export default function PrufberichtPage() {
       });
       
       if (response.ok) {
-        // Refresh data after action
+        toast.success('Skonto als nicht genutzt markiert');
         await fetchData();
       } else {
         const errorData = await response.json();
@@ -258,7 +259,7 @@ export default function PrufberichtPage() {
       }
     } catch (error) {
       console.error('Error marking as missed:', error);
-      alert('Fehler beim Markieren als verpasst: ' + (error as Error).message);
+      toast.error(<Notice title="Konnte nicht gespeichert werden" text={(error as Error).message} />);
     } finally {
       setActionLoading(null);
     }

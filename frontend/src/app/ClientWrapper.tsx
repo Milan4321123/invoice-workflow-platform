@@ -5,6 +5,9 @@ import { usePathname } from 'next/navigation'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import Navigation from '@/components/Navigation'
 import LegalFooter from '@/components/LegalFooter'
+import { DialogProvider } from '@/components/ui/DialogProvider'
+import { Toaster } from 'react-hot-toast'
+import { toastConfig } from '@/lib/toast-config'
 import { LanguageProvider, useT } from '@/i18n/LanguageContext'
 
 interface ClientWrapperProps {
@@ -45,9 +48,13 @@ function AppContent({ children }: ClientWrapperProps) {
 export default function ClientWrapper({ children }: ClientWrapperProps) {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <AppContent>{children}</AppContent>
-      </AuthProvider>
+      <DialogProvider>
+        <AuthProvider>
+          <AppContent>{children}</AppContent>
+        </AuthProvider>
+        {/* One place for notifications app-wide, below the fixed navigation */}
+        <Toaster {...toastConfig} />
+      </DialogProvider>
     </LanguageProvider>
   )
 }

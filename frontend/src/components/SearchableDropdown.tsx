@@ -7,6 +7,8 @@
 import React, { useState, useRef, useEffect, useId } from 'react';
 import { ChevronDown, Plus, X, Trash2 } from 'lucide-react';
 import { DropdownOption } from '@/services/dropdown';
+import { toast } from 'react-hot-toast';
+import { useDialog } from './ui/DialogProvider';
 
 interface SearchableDropdownProps {
   label: string;
@@ -36,6 +38,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   showDelete = true
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const dialog = useDialog();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newOptionValue, setNewOptionValue] = useState('');
@@ -83,7 +86,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     setSearchTerm('');
   };
 
-  const handleAddNew = () => {
+  const handleAddNew = async () => {
     if (newOptionValue.trim() && onAddNew) {
       const trimmedValue = newOptionValue.trim();
       
@@ -94,7 +97,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
       );
       
       if (exactDuplicate) {
-        alert(`Diese Option existiert bereits: "${exactDuplicate.label}"`);
+        toast.error(`„${exactDuplicate.label}“ gibt es bereits.`);
         return;
       }
       
@@ -106,9 +109,11 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
       
       if (similarOptions.length > 0) {
         const similarLabels = similarOptions.map(opt => opt.label).join(', ');
-        const confirmed = confirm(
-          `Ähnliche Optionen existieren bereits: ${similarLabels}\n\nMöchten Sie "${trimmedValue}" trotzdem hinzufügen?`
-        );
+        const confirmed = await dialog.confirm({
+          title: 'Ähnliche Option vorhanden',
+          message: `Es gibt bereits: ${similarLabels}. „${trimmedValue}“ trotzdem hinzufügen?`,
+          confirmLabel: 'Trotzdem hinzufügen',
+        });
         if (!confirmed) {
           return;
         }
@@ -121,12 +126,16 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     }
   };
 
-  const handleDelete = (optionValue: string, optionLabel: string, isDefault: boolean, e: React.MouseEvent) => {
+  const handleDelete = async (optionValue: string, optionLabel: string, isDefault: boolean, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent dropdown from closing
     
     if (onDelete) {
-      const optionType = isDefault ? 'Standard' : 'Benutzerdefinierte';
-      const confirmed = confirm(`Sind Sie sicher, dass Sie die ${optionType.toLowerCase()} Option "${optionLabel}" löschen möchten?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`);
+      const confirmed = await dialog.confirm({
+        title: 'Option löschen?',
+        message: `„${optionLabel}“${isDefault ? ' ist eine Standardoption und' : ''} wird für alle Benutzer aus der Liste entfernt. Bereits erfasste Rechnungen behalten ihren Wert.`,
+        confirmLabel: 'Löschen',
+        tone: 'danger',
+      });
       if (confirmed) {
         onDelete(optionValue);
       }

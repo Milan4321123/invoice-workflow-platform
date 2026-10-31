@@ -20,6 +20,7 @@ import {
   InformationCircleIcon
 } from '@heroicons/react/24/outline'
 import { authFetch } from '@/lib/authFetch';
+import { useDialog } from './ui/DialogProvider';
 
 // Types for Folder Watcher
 interface WatchFolder {
@@ -66,6 +67,7 @@ interface WatcherStatistics {
 }
 
 export function FolderWatcherDashboard() {
+  const dialog = useDialog()
   const [watcherStatus, setWatcherStatus] = useState<WatcherStatus | null>(null)
   const [watchFolders, setWatchFolders] = useState<WatchFolder[]>([])
   const [statistics, setStatistics] = useState<WatcherStatistics | null>(null)
@@ -230,9 +232,13 @@ export function FolderWatcherDashboard() {
 
   // Remove watch folder
   const removeWatchFolder = async (folderId: string, folderPath: string) => {
-    if (!confirm(`Sind Sie sicher, dass Sie den Überwachungsordner entfernen möchten:\n${folderPath}`)) {
-      return
-    }
+    const ok = await dialog.confirm({
+      title: 'Überwachungsordner entfernen?',
+      message: <>Neue Dateien in <code className="break-all rounded bg-gray-100 px-1">{folderPath}</code> werden danach nicht mehr importiert. Bereits importierte Rechnungen bleiben erhalten.</>,
+      confirmLabel: 'Entfernen',
+      tone: 'danger',
+    })
+    if (!ok) return
 
     setActionLoading(`remove-${folderId}`)
     try {

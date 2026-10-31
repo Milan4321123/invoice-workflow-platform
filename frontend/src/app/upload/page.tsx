@@ -4,8 +4,7 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Dropzone from '@/components/Dropzone'
-import toast, { Toaster } from 'react-hot-toast'
-import { toastConfig } from '@/lib/toast-config'
+import toast from 'react-hot-toast'
 
 interface UploadedFile {
   id: string
@@ -55,7 +54,6 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen gradient-bg-light pt-20 pb-12"> {/* Added modern background */}
-      <Toaster {...toastConfig} />
       
       <div className="max-w-2xl mx-auto px-2 sm:px-4">
         <div className="mb-8">

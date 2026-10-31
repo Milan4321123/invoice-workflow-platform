@@ -5,6 +5,10 @@ import { SearchableDropdown } from './SearchableDropdown';
 import { dropdownService, DropdownOption } from '@/services/dropdown';
 import { getApiUrl } from '@/config/api';
 import { authFetch } from '@/lib/authFetch';
+import { toast } from 'react-hot-toast';
+import { useDialog, isEmail } from './ui/DialogProvider';
+import { Notice } from './ui/Notice';
+import { Lock } from 'lucide-react';
 import TaxDetailsSection from './compliance/TaxDetailsSection';
 import ComplianceChecklist from './compliance/ComplianceChecklist';
 import AuditHistory from './compliance/AuditHistory';
@@ -51,6 +55,8 @@ interface PendingChange {
 
 interface CleanInvoiceFormProps {
   invoiceId?: string;
+  /** Approved invoices are locked (GoBD): no save or complete */
+  readOnly?: boolean;
   /** Offer "read fields" for PDFs without e-invoice data */
   aiExtraction?: { mode: 'live' | 'offline' | null } | null;
   fields: GermanInvoiceFields;
@@ -64,6 +70,7 @@ interface CleanInvoiceFormProps {
 
 const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
   invoiceId,
+  readOnly = false,
   aiExtraction = null,
   fields,
   onFieldChange,
@@ -83,11 +90,15 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const [isCommittingChanges, setIsCommittingChanges] = useState(false);
   const [showPendingChangesDetails, setShowPendingChangesDetails] = useState(false);
-  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
-  const [showInvoiceSaveConfirmation, setShowInvoiceSaveConfirmation] = useState(false);
-  const [showInvoiceCompleteConfirmation, setShowInvoiceCompleteConfirmation] = useState(false);
-  const [confirmationText, setConfirmationText] = useState('');
   const t = useT();
+
+  const dialog = useDialog();
+  const confirmDiscard = () => dialog.confirm({
+    title: t('form.discardTitle'),
+    message: t('form.discardBody', { count: pendingChanges.length }),
+    confirmLabel: t('form.discardConfirm'),
+    tone: 'danger',
+  });
 
   // Load dropdown options from API
   const loadDropdownOptions = async () => {
@@ -133,106 +144,48 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
     return `${action}: "${change.optionLabel}"`;
   };
 
-  // Show save confirmation dialog
-  const showSaveConfirmationDialog = () => {
+  // Dropdown option changes are shared by everyone, so they are confirmed before saving
+  const showSaveConfirmationDialog = async () => {
     if (pendingChanges.length === 0) {
-      alert('Keine ausstehenden Änderungen zum Speichern.');
+      toast('Keine ausstehenden Änderungen.');
       return;
     }
-    setShowSaveConfirmation(true);
-    setConfirmationText('');
+    const ok = await dialog.confirm({
+      title: t('form.commitTitle'),
+      message: t('form.commitBody', { count: pendingChanges.length }),
+      confirmLabel: t('form.commitConfirm'),
+    });
+    if (ok) await commitPendingChanges();
   };
 
-  // Handle confirmed save
-  const handleConfirmedSave = async () => {
-    if (confirmationText.toLowerCase() !== 'bestätigen') {
-      alert('Bitte geben Sie "bestätigen" ein, um die Änderungen zu speichern.');
-      return;
-    }
-    
-    setShowSaveConfirmation(false);
-    setConfirmationText('');
-    await commitPendingChanges();
+  const reviewerEmailProblem = (): string | null => {
+    const userEmail = fields.rechnungspruefung_email?.trim();
+    if (!userEmail) return t('form.reviewerMissing');
+    return isEmail(userEmail) ? null : t('form.reviewerInvalid');
   };
 
-  // Check if user has provided email before allowing changes
+  // Dropdown options can only be changed with a reviewer e-mail (the change is confirmed to it)
   const requireEmailForChanges = (): boolean => {
-    const userEmail = fields.rechnungspruefung_email?.trim();
-    if (!userEmail) {
-      alert('Bitte geben Sie zuerst Ihre E-Mail-Adresse im Feld "Rechnungsprüfung Email" ein, bevor Sie Dropdown-Optionen bearbeiten können.');
-      return false;
-    }
-    
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(userEmail)) {
-      alert('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
-      return false;
-    }
-    
-    return true;
+    const problem = reviewerEmailProblem();
+    if (problem) toast.error(problem);
+    return !problem;
   };
 
-  // Check if user has provided email before allowing save/complete actions
-  const validateEmailForAction = (actionName: string): boolean => {
-    const userEmail = fields.rechnungspruefung_email?.trim();
-    if (!userEmail) {
-      alert(`Bitte geben Sie zuerst Ihre E-Mail-Adresse im Feld "Rechnungsprüfung Email" ein, bevor Sie ${actionName} können.`);
-      return false;
-    }
-    
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(userEmail)) {
-      alert('Bitte geben Sie eine gültige E-Mail-Adresse ein, um fortzufahren.');
-      return false;
-    }
-    
-    return true;
-  };
-
-  // Enhanced save handler with email validation and confirmation
+  // Saving is routine and every change is in the change log, so no confirmation
   const handleSave = () => {
-    if (!validateEmailForAction('die Rechnung zu speichern')) {
-      return;
-    }
-    setShowInvoiceSaveConfirmation(true);
-    setConfirmationText('');
-  };
-
-  // Enhanced complete handler with email validation and confirmation
-  const handleComplete = () => {
-    if (!validateEmailForAction('die Bearbeitung abschließen')) {
-      return;
-    }
-    setShowInvoiceCompleteConfirmation(true);
-    setConfirmationText('');
-  };
-
-  // Handle confirmed invoice save
-  const handleConfirmedInvoiceSave = () => {
-    if (confirmationText.toLowerCase() !== 'bestätigen') {
-      alert('Bitte geben Sie "bestätigen" ein, um die Rechnung zu speichern.');
-      return;
-    }
-    
-    setShowInvoiceSaveConfirmation(false);
-    setConfirmationText('');
+    if (!requireEmailForChanges()) return;
     onSave();
   };
 
-  // Handle confirmed invoice complete
-  const handleConfirmedInvoiceComplete = () => {
-    if (confirmationText.toLowerCase() !== 'bestätigen') {
-      alert('Bitte geben Sie "bestätigen" ein, um die Bearbeitung abzuschließen.');
-      return;
-    }
-    
-    setShowInvoiceCompleteConfirmation(false);
-    setConfirmationText('');
-    if (onComplete) {
-      onComplete();
-    }
+  // Completing hands the invoice on, so it is confirmed
+  const handleComplete = async () => {
+    if (!requireEmailForChanges()) return;
+    const ok = await dialog.confirm({
+      title: t('form.completeTitle'),
+      message: t('form.completeBody'),
+      confirmLabel: t('form.completeConfirm'),
+    });
+    if (ok && onComplete) onComplete();
   };
 
   // Add change to pending list
@@ -255,9 +208,14 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
     const fieldLabel = getFieldLabel(fieldName);
     const changeCount = pendingChanges.filter(change => change.fieldName === fieldName).length;
     
-    if (confirm(`Möchten Sie wirklich alle ${changeCount} Änderung${changeCount !== 1 ? 'en' : ''} für "${fieldLabel}" entfernen?`)) {
-      setPendingChanges(prev => prev.filter(change => change.fieldName !== fieldName));
-    }
+    dialog.confirm({
+      title: t('form.removeTitle'),
+      message: t('form.removeBody', { count: changeCount, field: fieldLabel }),
+      confirmLabel: t('form.removeConfirm'),
+      tone: 'danger',
+    }).then((ok) => {
+      if (ok) setPendingChanges(prev => prev.filter(change => change.fieldName !== fieldName));
+    });
   };
 
   // Handle adding new dropdown option (staged)
@@ -349,7 +307,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
     } catch (error) {
       console.error('❌ Email notification failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`❌ Email failed: ${errorMessage}`);
+      toast.error(t('form.notifyFailed', { error: errorMessage }));
     }
   };
 
@@ -357,7 +315,7 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
   const commitPendingChanges = async () => {
     const userEmail = fields.rechnungspruefung_email?.trim();
     if (!userEmail) {
-      alert('Bitte geben Sie zuerst Ihre E-Mail-Adresse im Feld "Rechnungsprüfung Email" ein.');
+      toast.error(t('form.reviewerMissing'));
       return;
     }
 
@@ -394,11 +352,11 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
       // Clear pending changes
       setPendingChanges([]);
 
-      alert(`Änderungen erfolgreich gespeichert! Bestätigungs-E-Mail wurde an ${userEmail} gesendet.`);
+      toast.success(<Notice title={t('form.listsUpdated')} text={t('form.listsUpdatedEmail', { email: userEmail })} />);
       
     } catch (error) {
       console.error('Failed to commit changes:', error);
-      alert('Fehler beim Speichern der Änderungen. Bitte versuchen Sie es erneut.');
+      toast.error(t('form.listsFailed'));
     } finally {
       setIsCommittingChanges(false);
     }
@@ -526,8 +484,8 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
                   </button>
                   
                   <button
-                    onClick={() => {
-                      if (confirm(`Möchten Sie wirklich alle ${pendingChanges.length} ausstehenden Änderungen verwerfen?`)) {
+                    onClick={async () => {
+                      if (await confirmDiscard()) {
                         setPendingChanges([]);
                         setShowPendingChangesDetails(false);
                         loadDropdownOptions(); // Reload to reset UI
@@ -818,8 +776,8 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
         {pendingChanges.length > 0 && (
           <div className="mt-8 pt-6 border-t border-gray-200">
             <button
-              onClick={() => {
-                if (confirm(`Möchten Sie wirklich alle ${pendingChanges.length} ausstehenden Änderungen verwerfen?`)) {
+              onClick={async () => {
+                if (await confirmDiscard()) {
                   setPendingChanges([]);
                   loadDropdownOptions(); // Reload to reset UI
                 }
@@ -835,363 +793,110 @@ const CleanInvoiceForm: React.FC<CleanInvoiceFormProps> = ({
         )}
 
         {/* Static Action Bar at Bottom */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Status Indicators */}
-              {!fields.rechnungspruefung_email?.trim() && (
-                <div className="flex items-center gap-2 px-2 py-1 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
-                  <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-medium">E-Mail erforderlich</span>
-                </div>
-              )}
-            </div>
-            
-            {/* Compact Action Buttons */}
-            <div className="flex items-center gap-2">
-              {/* Dropdown Changes Save Button */}
-              {pendingChanges.length > 0 && (
-                <button
-                  onClick={showSaveConfirmationDialog}
-                  disabled={isCommittingChanges}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-all duration-300 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {isCommittingChanges ? (
-                    <>
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Speichern...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
-                      <span>Dropdown-Änderungen ({pendingChanges.length})</span>
-                    </>
-                  )}
-                </button>
-              )}
-
-              {/* Main Invoice Save Button */}
-              <button
-                onClick={handleSave}
-                disabled={isSaving || isCompleting || !fields.rechnungspruefung_email?.trim()}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-all duration-300 ${
-                  !fields.rechnungspruefung_email?.trim()
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700 text-white'
-                } disabled:bg-gray-400`}
-              >
-                {isSaving ? (
-                  <>
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Speichern...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        {readOnly ? (
+          <div className="mt-8 flex items-center gap-2 border-t border-gray-200 pt-6 text-sm text-gray-600">
+            <Lock className="h-4 w-4 text-amber-600" aria-hidden="true" />
+            Freigegeben: Diese Rechnung kann nicht mehr bearbeitet werden. Korrekturen nur über eine Rechnungskorrektur des Lieferanten.
+          </div>
+        ) : (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Status Indicators */}
+                {!fields.rechnungspruefung_email?.trim() && (
+                  <div className="flex items-center gap-2 px-2 py-1 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
+                    <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
-                    <span>Rechnung speichern</span>
-                  </>
+                    <span className="font-medium">E-Mail erforderlich</span>
+                  </div>
                 )}
-              </button>
+              </div>
+              
+              {/* Compact Action Buttons */}
+              <div className="flex items-center gap-2">
+                {/* Dropdown Changes Save Button */}
+                {pendingChanges.length > 0 && (
+                  <button
+                    onClick={showSaveConfirmationDialog}
+                    disabled={isCommittingChanges}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-all duration-300 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isCommittingChanges ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>{t('form.saving')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span>{t('form.listChanges', { count: pendingChanges.length })}</span>
+                      </>
+                    )}
+                  </button>
+                )}
 
-              {/* Complete Invoice Button */}
-              {onComplete && (
+                {/* Main Invoice Save Button */}
                 <button
-                  onClick={handleComplete}
+                  onClick={handleSave}
                   disabled={isSaving || isCompleting || !fields.rechnungspruefung_email?.trim()}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-all duration-300 ${
                     !fields.rechnungspruefung_email?.trim()
                       ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
                   } disabled:bg-gray-400`}
                 >
-                  {isCompleting ? (
+                  {isSaving ? (
                     <>
                       <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Abschließen...</span>
+                      <span>{t('form.saving')}</span>
                     </>
                   ) : (
                     <>
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span>Bearbeitung abschließen</span>
+                      <span>{t('form.save')}</span>
                     </>
                   )}
                 </button>
-              )}
+
+                {/* Complete Invoice Button */}
+                {onComplete && (
+                  <button
+                    onClick={handleComplete}
+                    disabled={isSaving || isCompleting || !fields.rechnungspruefung_email?.trim()}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-all duration-300 ${
+                      !fields.rechnungspruefung_email?.trim()
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    } disabled:bg-gray-400`}
+                  >
+                    {isCompleting ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>{t('form.completing')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{t('form.complete')}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
           </div>
         </div>
       </div>
 
-      {/* Save Confirmation Dialog */}
-      {showSaveConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Dropdown-Änderungen bestätigen
-                </h3>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-3">
-                Sie sind dabei, <strong>{pendingChanges.length} Dropdown-Änderung{pendingChanges.length !== 1 ? 'en' : ''}</strong> zu speichern. 
-                Bitte überprüfen Sie Ihre Änderungen sorgfältig:
-              </p>
-              
-              <div className="bg-gray-50 rounded-lg p-3 max-h-32 overflow-y-auto mb-4">
-                {Object.entries(groupPendingChangesByField()).map(([fieldName, changes]) => (
-                  <div key={fieldName} className="mb-2 last:mb-0">
-                    <div className="text-xs font-medium text-gray-700 mb-1">
-                      {getFieldLabel(fieldName)}:
-                    </div>
-                    <ul className="ml-2 space-y-1">
-                      {changes.map((change, index) => (
-                        <li key={index} className="text-xs text-gray-600">
-                          {change.type === 'add' ? '+ ' : '- '}
-                          {change.optionLabel}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="border-t pt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">„bestätigen“</span> ein, um fortzufahren:
-                </label>
-                <input
-                  type="text"
-                  value={confirmationText}
-                  onChange={(e) => setConfirmationText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && confirmationText.toLowerCase() === 'bestätigen') {
-                      handleConfirmedSave();
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="bestätigen"
-                  autoFocus
-                />
-                {confirmationText && confirmationText.toLowerCase() !== 'bestätigen' && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Bitte geben Sie genau „bestätigen“ ein (ohne Anführungszeichen)
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowSaveConfirmation(false);
-                  setConfirmationText('');
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleConfirmedSave}
-                disabled={confirmationText.toLowerCase() !== 'bestätigen' || isCommittingChanges}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  confirmationText.toLowerCase() === 'bestätigen' && !isCommittingChanges
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                {isCommittingChanges ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Wird gespeichert...</span>
-                  </div>
-                ) : (
-                  'Änderungen speichern'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invoice Save Confirmation Dialog */}
-      {showInvoiceSaveConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Rechnung speichern bestätigen
-                </h3>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-3">
-                Sie sind dabei, die <strong>Rechnung zu speichern</strong>. 
-                Die eingegebenen Daten werden in der Datenbank gespeichert.
-              </p>
-              
-              <div className="border-t pt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">„bestätigen“</span> ein, um fortzufahren:
-                </label>
-                <input
-                  type="text"
-                  value={confirmationText}
-                  onChange={(e) => setConfirmationText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && confirmationText.toLowerCase() === 'bestätigen') {
-                      handleConfirmedInvoiceSave();
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="bestätigen"
-                  autoFocus
-                />
-                {confirmationText && confirmationText.toLowerCase() !== 'bestätigen' && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Bitte geben Sie genau „bestätigen“ ein (ohne Anführungszeichen)
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowInvoiceSaveConfirmation(false);
-                  setConfirmationText('');
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleConfirmedInvoiceSave}
-                disabled={confirmationText.toLowerCase() !== 'bestätigen' || isSaving}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  confirmationText.toLowerCase() === 'bestätigen' && !isSaving
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                {isSaving ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Wird gespeichert...</span>
-                  </div>
-                ) : (
-                  'Rechnung speichern'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invoice Complete Confirmation Dialog */}
-      {showInvoiceCompleteConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5 8.707 7.621a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L10.586 9.5z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Bearbeitung abschließen bestätigen
-                </h3>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-3">
-                Sie sind dabei, die <strong>Bearbeitung abzuschließen</strong>. 
-                Die Rechnung wird als „Abgeschlossen“ markiert und der Status wird aktualisiert.
-              </p>
-              
-              <div className="border-t pt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Geben Sie <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-red-600">„bestätigen“</span> ein, um fortzufahren:
-                </label>
-                <input
-                  type="text"
-                  value={confirmationText}
-                  onChange={(e) => setConfirmationText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && confirmationText.toLowerCase() === 'bestätigen') {
-                      handleConfirmedInvoiceComplete();
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="bestätigen"
-                  autoFocus
-                />
-                {confirmationText && confirmationText.toLowerCase() !== 'bestätigen' && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Bitte geben Sie genau „bestätigen“ ein (ohne Anführungszeichen)
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowInvoiceCompleteConfirmation(false);
-                  setConfirmationText('');
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleConfirmedInvoiceComplete}
-                disabled={confirmationText.toLowerCase() !== 'bestätigen' || isCompleting}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  confirmationText.toLowerCase() === 'bestätigen' && !isCompleting
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                {isCompleting ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Wird abgeschlossen...</span>
-                  </div>
-                ) : (
-                  'Bearbeitung abschließen'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -6,6 +6,9 @@ import PDFViewer from './PDFViewerClean';
 import CleanInvoiceForm, { GermanInvoiceFields } from './CleanInvoiceForm';
 import { FileText, Eye, Edit3, AlertTriangle, CheckCircle, Monitor, FileInput, FileCode2, BadgeCheck, Lock } from 'lucide-react';
 import { authFetch } from '@/lib/authFetch';
+import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import { Notice } from './ui/Notice';
 import { apiErrorMessage } from '@/lib/apiError';
 import { useLanguage } from '@/i18n/LanguageContext';
 
@@ -37,6 +40,7 @@ export default function InvoiceEditorDashboard({
       .catch(() => setAiMode(null));
   }, []);
   const { locale, t } = useLanguage();
+  const router = useRouter();
   const [retentionUntil, setRetentionUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(!initialData);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -89,7 +93,7 @@ export default function InvoiceEditorDashboard({
     setHasUnsavedChanges(true);
   };
 
-  const handleSave = async (updatedFields: GermanInvoiceFields) => {
+  const handleSave = async (updatedFields: GermanInvoiceFields, quiet = false) => {
     try {
       setIsSaving(true);
       
@@ -128,17 +132,16 @@ export default function InvoiceEditorDashboard({
       setFields(updatedFields);
       setHasUnsavedChanges(false);
       
-      // Show success message including email confirmation
-      if (result.email_sent) {
-        alert(`✅ Rechnung erfolgreich gespeichert! Bestätigungs-E-Mail wurde an ${editorInfo.editor_email} gesendet.`);
-      } else {
-        alert('✅ Rechnung erfolgreich gespeichert!');
+      if (!quiet) {
+        toast.success(<Notice title={t('editor.saved')}
+          text={result.email_sent ? t('editor.savedEmail', { email: editorInfo.editor_email ?? '' }) : undefined} />);
       }
       
       return true;
     } catch (err) {
       console.error('Error saving invoice:', err);
-      alert(`❌ Fehler beim Speichern: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
+      // When completing, the caller reports the failure once
+      if (!quiet) toast.error(<Notice title={t('editor.saveFailed')} text={err instanceof Error ? err.message : undefined} />);
       throw err;
     } finally {
       setIsSaving(false);
@@ -167,7 +170,7 @@ export default function InvoiceEditorDashboard({
       setIsCompleting(true);
       
       // First save the current changes
-      await handleSave(fields);
+      await handleSave(fields, true);
       
       // Mark as completed - no automatic email sending
       const apiUrl = getApiUrl();
@@ -207,20 +210,16 @@ export default function InvoiceEditorDashboard({
 
       const result = await response.json();
       
-      // Show success message based on whether completion email was sent
-      const emailMessage = result.completion_email_sent 
-        ? "\n📧 Abschluss-E-Mail wurde gesendet"
-        : "\n⚠️ Keine E-Mail-Benachrichtigung gesendet";
-      
-      alert(`✅ Rechnung erfolgreich abgeschlossen!${emailMessage}\n\n📋 Status: "Bearbeitung abgeschlossen - bereit für Bauleiter"\n\n💡 Nächster Schritt: Verwenden Sie die "An Bauleiter senden" Schaltfläche im Dashboard, um die Genehmigung zu beantragen.`);
-      
-      // Redirect to dashboard after completion
-      window.location.href = '/dashboard';
+      toast.success(<Notice title={t('editor.completed')}
+        text={[result.completion_email_sent ? t('editor.completedEmail') : '', t('editor.completedNext')].filter(Boolean).join(' ')} />,
+        { duration: 6000 });
+      // Client-side navigation keeps the notification visible on the dashboard
+      router.push('/dashboard');
       
       return true;
     } catch (err) {
       console.error('Error completing invoice:', err);
-      alert(`❌ Fehler beim Abschließen: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
+      toast.error(<Notice title={t('editor.completeFailed')} text={err instanceof Error ? err.message : undefined} />);
       throw err;
     } finally {
       setIsCompleting(false);
@@ -345,6 +344,7 @@ export default function InvoiceEditorDashboard({
           <div className="flex-1 h-full overflow-hidden">
             <CleanInvoiceForm
               invoiceId={invoiceId}
+              readOnly={locked}
               aiExtraction={!eRechnungFormat && !locked && mimeType !== 'application/xml' ? { mode: aiMode } : null}
               fields={fields}
               onFieldChange={(fieldName: string, value: any) => handleFieldChange(fieldName as keyof GermanInvoiceFields, value)}

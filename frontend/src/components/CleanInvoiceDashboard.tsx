@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { toast, Toaster } from 'react-hot-toast'
+import { toast } from 'react-hot-toast'
 import { 
   FileText, 
   Edit3, 
@@ -24,6 +24,9 @@ import DeleteConfirmationDialog from './DeleteConfirmationDialog'
 import InvoiceMobileCard from './InvoiceMobileCard'
 import { buildApiUrl, API_CONFIG } from '@/config/api'
 import { authFetch } from '@/lib/authFetch';
+import { useDialog, isEmail } from './ui/DialogProvider';
+import { Notice } from './ui/Notice';
+import { useAuth } from '@/contexts/AuthContext';
 import { apiErrorMessage } from '@/lib/apiError';
 import { useT } from '@/i18n/LanguageContext';
 
@@ -36,6 +39,8 @@ interface CleanInvoice {
   file_size: number
   created_at: string
   e_rechnung_format?: string | null
+  bauleiter_email?: string | null
+  rechnungsnummer?: string | null
   
   // Manual Review Status
   review_status?: 'pending' | 'under_review' | 'completed_review' | 'needs_attention'
@@ -71,6 +76,8 @@ export default function CleanInvoiceDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [exportYear, setExportYear] = useState(new Date().getFullYear())
   const t = useT()
+  const dialog = useDialog()
+  const { user } = useAuth()
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean
     invoiceId: string
@@ -246,69 +253,43 @@ export default function CleanInvoiceDashboard() {
   }
 
   const sendToBauleiter = async (invoice: CleanInvoice) => {
-    try {
-      // Get Bauleiter email from user
-      const bauleiterEmail = prompt(
-        `Rechnung "${invoice.file_name}" an Bauleiter senden.\n\nBitte geben Sie die E-Mail-Adresse des Bauleiters ein:`
-      );
-      
-      if (!bauleiterEmail) {
-        toast.error("Abgebrochen: Bauleiter E-Mail ist erforderlich");
-        return;
-      }
-      
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(bauleiterEmail)) {
-        toast.error("Ungültige E-Mail-Adresse");
-        return;
-      }
-      
-      // Use the new send-to-bauleiter endpoint for better status tracking
-      const requestData = {
-        bauleiter_email: bauleiterEmail,
-        sent_by: "dashboard_user",
-        editor_name: "Dashboard User",
-        editor_email: "dashboard_user@company.de",
-        changes_summary: [
-          {
-            field: "Status",
-            old_value: "Bearbeitung abgeschlossen", 
-            new_value: "An Bauleiter gesendet",
-            timestamp: new Date().toLocaleString('de-DE')
-          }
-        ]
-      };
+    const bauleiterEmail = await dialog.prompt({
+      title: t('send.title'),
+      message: t('send.message', { name: invoice.rechnungsnummer || invoice.file_name }),
+      label: t('send.label'),
+      inputType: 'email',
+      placeholder: t('send.placeholder'),
+      defaultValue: invoice.bauleiter_email || '',
+      confirmLabel: t('send.confirm'),
+      validate: (value) => (isEmail(value) ? null : t('send.invalid')),
+    })
+    if (!bauleiterEmail) return
 
+    try {
+      // The e-mail names the person who sent it, so it comes from the login
       const response = await authFetch(buildApiUrl(`/api/invoices/${invoice.id}/send-to-bauleiter`), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bauleiter_email: bauleiterEmail,
+          sent_by: user?.username,
+          editor_name: user?.full_name || user?.username,
+          editor_email: user?.email || undefined,
+        }),
+      })
       if (!response.ok) {
-        throw new Error(`Senden fehlgeschlagen: ${response.statusText}`);
+        throw new Error(await apiErrorMessage(response, response.statusText))
       }
-
-      const result = await response.json();
-      
-      // Show success message with email status
-      if (result.email_sent && result.email_provider === 'demo') {
-        toast.success(`📁 Demo-Modus: E-Mail an ${bauleiterEmail} wurde nicht versendet, sondern in backend/outbox gespeichert.`, { duration: 6000 });
-        await fetchInvoices();
-      } else if (result.email_sent) {
-        toast.success(`✅ E-Mail erfolgreich an ${bauleiterEmail} gesendet!`);
-        // Refresh the list to show updated status
-        await fetchInvoices();
-      } else {
-        toast.error(`❌ E-Mail konnte nicht gesendet werden: ${result.email_error || 'Unbekannter Fehler'}`);
+      const result = await response.json()
+      if (!result.email_sent) {
+        throw new Error(result.email_error || '')
       }
-      
+      toast.success(<Notice title={t('send.sent')}
+        text={t(result.email_provider === 'demo' ? 'send.sentDemo' : 'send.sentTo', { email: bauleiterEmail })} />,
+        { duration: 5000 })
+      await fetchInvoices()
     } catch (err) {
-      console.error('Error sending to Bauleiter:', err);
-      toast.error(`Fehler beim Senden: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
+      toast.error(<Notice title={t('send.failed')} text={err instanceof Error ? err.message : undefined} />)
     }
   }
 
@@ -520,33 +501,6 @@ export default function CleanInvoiceDashboard() {
 
   return (
     <div className="min-h-screen gradient-bg-light pt-16"> {/* Added pt-16 for fixed navigation */}
-      <Toaster 
-        position="top-right" 
-        toastOptions={{
-          style: {
-            marginTop: '80px', // Push notifications below the fixed navigation
-            zIndex: 9999, // Ensure toasts appear above all other elements
-          },
-          success: {
-            style: {
-              background: '#10B981',
-              color: 'white',
-              fontWeight: '500',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            },
-            duration: 4000,
-          },
-          error: {
-            style: {
-              background: '#EF4444',
-              color: 'white',
-              fontWeight: '500',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            },
-            duration: 5000,
-          },
-        }}
-      />
       
       {/* Header */}
       <header className="glass-card border-0 shadow-lg">

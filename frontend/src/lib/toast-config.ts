@@ -1,6 +1,7 @@
 // Centralized toast configuration for consistent styling across the application
 export const toastConfig = {
-  position: "bottom-right" as const,
+  position: "top-right" as const,
+  containerStyle: { top: 80 },
   toastOptions: {
     duration: 4000,
     style: {

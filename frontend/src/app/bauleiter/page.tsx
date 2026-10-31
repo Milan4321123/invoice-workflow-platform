@@ -7,6 +7,7 @@ import { buildApiUrl } from '@/config/api';
 import { authFetch } from '@/lib/authFetch';
 import { apiErrorMessage } from '@/lib/apiError';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useDialog } from '@/components/ui/DialogProvider';
 
 interface Invoice {
   id: string;
@@ -35,6 +36,7 @@ function DecisionCard({ invoice, onDecided }: { invoice: Invoice; onDecided: () 
   const [mode, setMode] = useState<'idle' | 'rejecting' | 'busy'>('idle');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const dialog = useDialog();
   const money = (v?: number) => (v ?? 0).toLocaleString(locale === 'en' ? 'en-GB' : 'de-DE', { style: 'currency', currency: 'EUR' });
   const day = (v?: string) => (v ? new Date(v).toLocaleDateString(locale === 'en' ? 'en-GB' : 'de-DE') : '—');
 
@@ -47,8 +49,12 @@ function DecisionCard({ invoice, onDecided }: { invoice: Invoice; onDecided: () 
   }, [invoice.id]);
 
   const decide = async (decision: 'approve' | 'reject') => {
-    if (decision === 'approve' && check && check.error_count > 0 &&
-        !window.confirm(t('site.approveWithErrors', { count: check.error_count }))) {
+    if (decision === 'approve' && check && check.error_count > 0 && !(await dialog.confirm({
+      title: t('site.approve'),
+      message: t('site.approveWithErrors', { count: check.error_count }),
+      confirmLabel: t('site.approve'),
+      tone: 'danger',
+    }))) {
       return;
     }
     setMode('busy');
